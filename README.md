@@ -1,40 +1,81 @@
 # Professionelle Zeiterfassung
 
-Responsive Zeiterfassung für **Valtère Fansi** mit Cloudflare Worker, D1-Datenbank und einer lokalen Offline-Ansicht.
+Responsive Zeiterfassung für **Valtère Fansi** mit Cloudflare Worker, D1-Datenbank und lokaler Offline-Unterstützung.
 
-## Enthaltene Funktionen
+## Funktionen
 
-- Übersicht mit Heute-, Tages-, Monats- und Wochen-Saldo
-- Arbeitsrahmen: Datum, Start, Ende, Pause in Stunden sowie Nettozeitberechnung
+### Arbeitszeit
+
+- Übersicht mit Tages-, Wochen-, Monats- und Jahressaldo
+- Arbeitsrahmen mit Datum, Start, Ende und Pause in Stunden
+- Tag-/Woche-Ansicht für den Arbeitsrahmen
 - Individuelle Sollzeiten je Wochentag
 - Abwesenheiten und Projektbudgets mit Status
-- Buchungen mit Kategorie, Projekt, Leistung, Dauer, Bemerkung und Jira-Referenz
-- Buchungen suchen, bearbeiten, löschen und nach Datum erfassen
+- Tagesabschluss und Übernahme des letzten Arbeitstags
 - Live-Timer mit Übernahme der gemessenen Dauer
-- Kalender für Termine, Aufgaben und Geburtstage mit Ganztägig-Option und Erinnerungsintervall
-- Notizen mit Titel, Inhalt und Checkliste
-- Auswertung nach Tag, Woche, Monat, Jahr und Kategorie
-- Konfigurierbarer PDF-Druckbericht
-- CSV-Export mit Zeitraum
+- Buchungen mit Kategorie, Projekt, Leistung, Dauer, Bemerkung und Jira-Referenz
+- Buchungen sofort nach Erstellen, Bearbeiten oder Löschen aktualisieren
+- Suche, Bearbeitung und Löschung von Buchungen
+
+### Kalender und Erinnerungen
+
+- Monatskalender mit Navigation, Heute-Schaltfläche und Agenda
+- Tag-/Woche-Agenda
+- Termine, Aufgaben und Geburtstage
+- Ganztägige Einträge, Ort, Notiz und Erinnerungsintervall
+- Browser-Benachrichtigungen mit einmaliger Erinnerung
+- ICS-Export für Outlook, Teams und Gerätekalender
+
+### Notizen
+
+- Notizen mit Titel und Inhalt
+- Farbmarkierungen: Blau, Grün, Gelb, Rot und Violett
+- Checklisten beim Erstellen und Bearbeiten
+- Aufgaben hinzufügen, abhaken und einzeln löschen
+- Lokale Speicherung sowie D1-Synchronisierung bei Anmeldung
+
+### Exporte und Verwaltung
+
+- CSV-Export für Tag, freien Zeitraum, Monat und Jahr
+- PDF-Druckbericht für Tag, freien Zeitraum, Monat und Jahr
+- CSV/PDF mit Datum, Kategorie, Projekt, Leistung, Dauer und Bemerkung
 - Kategorien, Projekte und Favoriten verwalten
-- Datensicherung als JSON
-- Login, Registrierung und Abmeldung; Passwörter werden nur als Hash in D1 gespeichert
-- Responsive Desktop-/Mobile-Darstellung
-- Korrekte Anzeige des Namens **Valtère Fansi**
+- JSON-Datensicherung und Wiederherstellung
+- Authentifizierungs-Untermenü im Profil: Einloggen, Registrierung und Abmelden
+- Passwort wird nur als Hash in D1 gespeichert
+- Name **Valtère Fansi** und Microsoft-Teams-/Fluent-Design
+- Responsive Desktop- und Mobile-Darstellung
+
+## Bedienung
+
+1. Profil unten links öffnen und Einloggen oder Registrierung auswählen.
+2. Im Arbeitsrahmen Tag oder Woche wählen und Sollzeit konfigurieren.
+3. Eine Buchung mit Kategorie, Projekt und Dauer erfassen.
+4. Kalender- und Notizfunktionen über die linke Navigation öffnen.
+5. Für Exporte oben CSV oder PDF wählen und den Berichtszeitraum festlegen.
+6. Für Browser-Erinnerungen im Kalender „Benachrichtigungen testen“ bestätigen.
+
+## Technische Architektur
+
+- worker.js: Cloudflare Worker, Authentifizierung, API und D1-Zugriff
+- public/index.html: Grundlayout, Navigation und Fluent-Design
+- public/stable-ui.js: stabile UI-Schicht, Ansichten, Kalender, Notizen, Exporte und Aktualisierung
+- public/auth-ui.js: Profil-Untermenü und Authentifizierungsdialog
+- public/api.js: API-Client und Session-Verwaltung
+- public/extra.js: Buchungserfassung und Synchronisierung
+- Legacy-Feature-Schichten werden nicht geladen, damit keine doppelten Handler oder widersprüchlichen Menüs entstehen.
 
 ## Cloudflare
 
-Die Bindings stehen in `wrangler.toml`:
+Die Bindings stehen in wrangler.toml:
 
-- D1: `DB` → `zeiterfassung-cloud-prod`
-- Assets: `ASSETS` → `public`
+- D1: DB → zeiterfassung-cloud-prod
+- Assets: ASSETS → public
 
-Migrationen:
+Migrationen und Deployment:
 
-```bash
-bun install
-npx wrangler d1 migrations apply zeiterfassung-cloud-prod --remote
-npx wrangler deploy
-```
+    bun install
+    npx wrangler d1 migrations apply zeiterfassung-cloud-prod --remote
+    npx wrangler deploy
 
-E-Mail-Bestätigung und SMS sind als nächster Integrationspunkt vorbereitet. Dafür müssen bewusst ein E-Mail-/SMS-Anbieter und die zugehörigen Cloudflare-Secrets konfiguriert werden.
+E-Mail-Bestätigung und SMS sind als Integrationspunkt dokumentiert, aber erst nach Auswahl eines E-Mail-/SMS-Anbieters und Einrichtung der erforderlichen Cloudflare-Secrets aktivierbar.
