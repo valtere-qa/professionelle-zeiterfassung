@@ -13,4 +13,5 @@ binding = "KV_BINDING"
 id = "ae719cf0180d43a8af22effba1ebf67f"
 
 [assets]
-directory = "."
+directory = "./public"
+binding = "ASSETS"
