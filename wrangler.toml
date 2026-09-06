@@ -1,0 +1,16 @@
+name = "professionelle-zeiterfassung"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "zeiterfassung-cloud-prod"
+database_id = "cf3d17bc-c247-43e6-9895-68371269f957"
+migrations_dir = "migrations"
+
+[[kv_namespaces]]
+binding = "KV_BINDING"
+id = "ae719cf0180d43a8af22effba1ebf67f"
+
+[assets]
+directory = "."
