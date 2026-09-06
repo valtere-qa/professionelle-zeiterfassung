@@ -1,6 +1,6 @@
 # Professionelle Zeiterfassung
 
-Responsive Senior-Frontend für eine persönliche Zeiterfassung.
+Responsive Senior-Frontend für eine persönliche Zeiterfassung von **Valtère Fansi**.
 
 ## Enthalten
 
