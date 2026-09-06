@@ -27,3 +27,24 @@
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",enhance);else enhance();
 })();
+/* Arbeitsplanung und Nettozeit */
+(() => {
+  const S="professionelle-zeiterfassung.v2";
+  const read=()=>Object.assign({entries:[],projects:["UKA Connect","Intern","Privat"],daily:"8h 00",weekly:"40h 00",absence:"Arbeitstag",weekdayTargets:{Mo:8,Di:8,Mi:8,Do:8,Fr:8}},JSON.parse(localStorage.getItem(S)||"{}"));
+  const save=v=>localStorage.setItem(S,JSON.stringify(v));
+  const esc=v=>String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  function planning(){
+    const p=document.querySelector("#dynamic"),d=read(),days=["So","Mo","Di","Mi","Do","Fr","Sa"];
+    p.hidden=false;p.innerHTML="<h2>Arbeitsplanung</h2><p>Arbeitszeit, Sollzeiten, Abwesenheiten und Projektbudgets konfigurieren.</p><div class='card' style='padding:18px;margin:12px 0'><h3>Individuelles Soll je Wochentag</h3><div style='display:grid;grid-template-columns:repeat(7,1fr);gap:8px'>"+days.map(x=>"<label style='font-size:11px'>"+x+"<input class='rf-day' data-day='"+x+"' type='number' min='0' max='24' step='.25' value='"+(d.weekdayTargets?.[x]??(x==="So"||x==="Sa"?0:8))+"'></label>").join("")+"</div></div><div class='card' style='padding:18px;margin:12px 0'><h3>Abwesenheit am "+new Date().toLocaleDateString("de-CH",{day:"2-digit",month:"2-digit"})+"</h3><select id='rfAbsence'><option>Arbeitstag</option><option>Ferien</option><option>Krankheit</option><option>Feiertag</option><option>Unbezahlt abwesend</option></select><p class='sub'>Tag abschliessen oder zum Ändern wieder öffnen.</p></div><div class='card' style='padding:18px;margin:12px 0'><h3>Projektbudgets & Status</h3><div style='display:grid;grid-template-columns:repeat(3,1fr);gap:12px'>"+d.projects.map((x,i)=>"<div style='border:1px solid var(--line);padding:12px;border-radius:12px'><label>Projektname<input class='rf-project' data-index='"+i+"' value='"+esc(x)+"'></label><label>Budget (Std.)<input type='number' min='0' class='rf-budget' data-index='"+i+"' value='"+(d.budgets?.[x]||0)+"'></label><label>Status<select><option>Aktiv</option><option>Archiviert</option></select></label></div>").join("")+"</div></div>";
+    p.querySelectorAll(".rf-day").forEach(i=>i.onchange=()=>{const n=read();n.weekdayTargets=n.weekdayTargets||{};n.weekdayTargets[i.dataset.day]=Number(i.value);save(n)});
+    p.querySelector("#rfAbsence").value=d.absence||"Arbeitstag";p.querySelector("#rfAbsence").onchange=e=>{const n=read();n.absence=e.target.value;save(n)};
+    p.querySelectorAll(".rf-project").forEach(i=>i.onchange=()=>{const n=read(),oldName=n.projects[Number(i.dataset.index)];n.projects[Number(i.dataset.index)]=i.value.trim()||oldName;save(n)});
+    p.scrollIntoView({behavior:"smooth"});
+  }
+  function net(){
+    const s=document.querySelector(".work-grid input[type=time]"),end=document.querySelectorAll(".work-grid input[type=time]")[1],br=document.querySelector("#breakInput"),daily=document.querySelector("#daily");
+    if(!s||!end||!br||!daily)return;const a=s.value.split(":").map(Number),b=end.value.split(":").map(Number);if(a.length<2||b.length<2)return;let m=(b[0]*60+b[1])-(a[0]*60+a[1])-Number(br.value||0)*60;if(m<0)m+=1440;daily.value=Math.floor(m/60)+"h "+String(m%60).padStart(2,"0");const d=JSON.parse(localStorage.getItem(S)||"{}");d.daily=daily.value;d.breakHours=br.value;localStorage.setItem(S,JSON.stringify(d));
+  }
+  function enhancePlanning(){document.querySelectorAll(".nav button").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.view==="settings")setTimeout(planning,40)}));document.querySelectorAll(".work-grid input[type=time],#breakInput").forEach(x=>x.addEventListener("change",net));net();}
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",enhancePlanning);else enhancePlanning();
+})();
