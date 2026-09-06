@@ -205,7 +205,7 @@ button,input,select{font:inherit}
   .row{grid-template-columns:44px minmax(0,1fr) 90px 18px;padding:10px}
   .side-stack{grid-template-columns:1fr}
 }
-</style>
+</style>\n<link rel="stylesheet" href="./reference.css">
 </head>
 <body>
 <div class="app">
@@ -427,5 +427,5 @@ document.addEventListener('click', e => {
   if (!picker.contains(e.target) && !control.contains(e.target)) picker.classList.remove('open');
 });
 </script>
-</body>
+<script src="./reference.js"></script>\n</body>
 </html>
