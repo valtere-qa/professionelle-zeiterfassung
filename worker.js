@@ -21,6 +21,22 @@ function hash(value) { return crypto.subtle.digest("SHA-256", new TextEncoder().
 function token() { return `${id()}${id().replaceAll("-", "")}`; }
 async function body(request) { try { return await request.json(); } catch { return {}; } }
 
+async function ensureSchema(env) {
+  if (!env.DB) throw new Error("D1-Binding DB fehlt.");
+  await env.DB.exec(`
+    PRAGMA foreign_keys = ON;
+    CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, name TEXT NOT NULL, daily_target_minutes INTEGER NOT NULL DEFAULT 480, weekly_target_minutes INTEGER NOT NULL DEFAULT 2400, created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, token_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS categories (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL, color TEXT NOT NULL DEFAULT '#1769e8', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(user_id,name));
+    CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', budget_minutes INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(user_id,name));
+    CREATE TABLE IF NOT EXISTS entries (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, entry_date TEXT NOT NULL, start_time TEXT, end_time TEXT, duration_minutes INTEGER NOT NULL, break_minutes INTEGER NOT NULL DEFAULT 0, category_id TEXT NOT NULL REFERENCES categories(id), project_id TEXT NOT NULL REFERENCES projects(id), description TEXT, jira_reference TEXT, notes TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS favorites (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, label TEXT NOT NULL, category_id TEXT REFERENCES categories(id) ON DELETE SET NULL, project_id TEXT REFERENCES projects(id) ON DELETE SET NULL, duration_minutes INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS settings (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, key TEXT NOT NULL, value TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(user_id,key));
+    CREATE INDEX IF NOT EXISTS idx_entries_user_date ON entries(user_id,entry_date);
+    CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token_hash);
+  `);
+}
+
 async function currentUser(request, env) {
   const auth = request.headers.get("Authorization") || "";
   if (!auth.startsWith("Bearer ")) return null;
@@ -110,6 +126,7 @@ export default {
     if (request.method === "OPTIONS") return cors(request, new Response(null, { status: 204 }));
     let response;
     try {
+      await ensureSchema(env);
       response = await auth(request, env);
       if (!response) {
         const url = new URL(request.url);
