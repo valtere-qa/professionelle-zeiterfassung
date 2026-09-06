@@ -31,7 +31,9 @@
     document.body.append(node); setTimeout(()=>node.remove(),2400);
   };
   const panel = () => $("#dynamic");
-  let currentView="overview";
+  let currentView="overview", lastDataSignature="";
+  const dataSignature=()=>[localStorage.getItem(STORE)||"",localStorage.getItem(CALENDAR)||"",localStorage.getItem(NOTES)||""].join("|");
+
   const refreshOverview=()=>{
     const d=state(), todayEntries=d.entries.filter(e=>e.date===today()), total=todayEntries.reduce((sum,e)=>sum+Number(e.minutes||0),0), all=d.entries.reduce((sum,e)=>sum+Number(e.minutes||0),0);
     const set=(id,value)=>{const n=$("#"+id);if(n)n.textContent=value};
@@ -131,6 +133,6 @@
   const init=()=>{
     if(!Storage.prototype.__zeiterfassungPatched){const originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){originalSetItem.call(this,key,value);window.dispatchEvent(new CustomEvent("zeiterfassung-storage-changed",{detail:key}));};Storage.prototype.__zeiterfassungPatched=true;}
     window.addEventListener("zeiterfassung-storage-changed",e=>{if([STORE,CALENDAR,NOTES].includes(e.detail)){if(currentView==="overview")refreshOverview();else if(currentView)render(currentView);}});
-    pullRemote();window.addEventListener("zeiterfassung-auth-changed",pullRemote);document.addEventListener("click",handleClick,true);$$("body *").forEach(x=>{if(x.childNodes.length===1&&x.textContent.includes("Valt%C3%A8re%20Fansi"))x.textContent="Valtère Fansi"});};
+    pullRemote();window.addEventListener("zeiterfassung-auth-changed",pullRemote);window.ZeiterfassungRefresh=()=>{if(currentView==="overview")refreshOverview();else render(currentView);};lastDataSignature=dataSignature();setInterval(()=>{const signature=dataSignature();if(signature!==lastDataSignature){lastDataSignature=signature;window.ZeiterfassungRefresh();}},500);document.addEventListener("click",handleClick,true);$$("body *").forEach(x=>{if(x.childNodes.length===1&&x.textContent.includes("Valt%C3%A8re%20Fansi"))x.textContent="Valtère Fansi"});};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
