@@ -72,6 +72,7 @@
   const selectedDate=()=>document.querySelector("#workDate")?.value||new Date().toISOString().slice(0,10);
   const toast=t=>{const e=document.createElement("div");e.textContent=t;Object.assign(e.style,{position:"fixed",right:"18px",bottom:"85px",zIndex:100,background:"#123263",color:"#fff",padding:"12px 16px",borderRadius:"10px"});document.body.append(e);setTimeout(()=>e.remove(),2200)};
   function refresh() {
+    if(window.ZeiterfassungRefresh){window.ZeiterfassungRefresh();return}
     document.querySelector("#search")?.dispatchEvent(new Event("input",{bubbles:true}));
     document.querySelector("#dateLabel")?.closest(".top")?.querySelector("p");
   }
