@@ -1,432 +1,61 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Zeiterfassung – Selbstorganisation</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Professionelle Zeiterfassung</title>
 <style>
-:root{
-  --bg:#f6f8fc;
-  --surface:#fff;
-  --surface-soft:#f8faff;
-  --border:#e4eaf3;
-  --text:#0f2448;
-  --muted:#6f7f9e;
-  --blue:#1769e8;
-  --blue-soft:#eaf2ff;
-  --green:#11a45c;
-  --green-soft:#edf9f2;
-  --orange:#f5a000;
-  --orange-soft:#fff5e7;
-  --purple:#8f43df;
-  --shadow:0 8px 30px rgba(34,62,116,.06);
-  --radius:18px;
-}
-*{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background:var(--bg);
-  color:var(--text);
-}
-button,input,select{font:inherit}
-.app{display:grid;grid-template-columns:286px 1fr;min-height:100vh}
-.sidebar{
-  background:#fff;
-  border-right:1px solid var(--border);
-  padding:26px 18px 18px;
-  display:flex;
-  flex-direction:column;
-  position:sticky;top:0;height:100vh;
-}
-.brand{display:flex;align-items:center;gap:12px;padding:2px 8px 24px}
-.brand-mark{
-  width:46px;height:46px;border-radius:50%;
-  border:7px solid var(--blue);border-right-color:transparent;position:relative;
-}
-.brand-mark:after{content:"";position:absolute;width:7px;height:16px;background:var(--blue);top:-8px;right:4px;border-radius:4px}
-.brand strong{display:block;font-size:20px}
-.brand small{color:var(--muted);font-size:14px}
-.nav{display:grid;gap:5px}
-.nav a{
-  text-decoration:none;color:var(--text);padding:13px 14px;border-radius:12px;
-  display:flex;align-items:center;gap:13px;font-size:15px
-}
-.nav a.active{background:var(--blue-soft);color:var(--blue);font-weight:700;border-left:4px solid var(--blue)}
-.nav-icon{width:22px;text-align:center;font-size:19px}
-.sidebar-spacer{flex:1}
-.fav-card,.profile{
-  border:1px solid var(--border);border-radius:16px;background:#fff;box-shadow:var(--shadow)
-}
-.fav-head{padding:14px 16px;border-bottom:1px solid var(--border);font-weight:700;display:flex;justify-content:space-between}
-.fav-empty{text-align:center;padding:26px 18px 18px}
-.star{font-size:46px;color:var(--blue);line-height:1}
-.fav-empty p{margin:8px 0;color:var(--muted);font-size:13px;line-height:1.5}
-.outline-btn{
-  width:100%;padding:11px 14px;border:1.5px solid var(--blue);color:var(--blue);background:white;
-  border-radius:10px;font-weight:700;cursor:pointer
-}
-.profile{margin-top:14px;padding:12px;display:flex;align-items:center;gap:10px}
-.avatar{width:42px;height:42px;border-radius:50%;background:#113263;color:#fff;display:grid;place-items:center;font-weight:800}
-.profile small{display:block;color:var(--muted);font-size:12px}
-
-.main{padding:28px 36px 34px;max-width:1540px;width:100%;margin:0 auto}
-.topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:24px}
-.title h1{font-size:31px;line-height:1.15;margin:0 0 6px}
-.title p{margin:0;color:var(--muted);font-size:15px}
-.top-actions{display:flex;gap:12px;align-items:center}
-.btn{
-  border:0;border-radius:10px;padding:13px 18px;font-weight:750;cursor:pointer;
-  display:inline-flex;gap:10px;align-items:center;justify-content:center
-}
-.btn.secondary{background:#fff;color:var(--text);border:1px solid var(--border);box-shadow:var(--shadow)}
-.btn.primary{background:var(--blue);color:#fff;box-shadow:0 8px 18px rgba(23,105,232,.18)}
-.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:20px}
-.metric{
-  background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:23px;box-shadow:var(--shadow)
-}
-.metric.green{background:linear-gradient(135deg,#fff 30%,#f4fbf7)}
-.metric-row{display:flex;gap:15px;align-items:center}
-.metric-icon{
-  width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-size:25px;font-weight:700
-}
-.metric-icon.blue{background:var(--blue-soft);color:var(--blue)}
-.metric-icon.orange{background:var(--orange-soft);color:var(--orange)}
-.metric-icon.green{background:var(--green-soft);color:var(--green)}
-.metric-label{font-size:13px;color:#50617f;font-weight:700}
-.metric-value{font-size:29px;font-weight:800;margin-top:4px}
-.metric.green .metric-value{color:var(--green)}
-.metric-sub{margin-top:8px;color:var(--muted);font-size:12.5px}
-.progress{height:7px;border-radius:999px;background:#edf1f7;margin-top:17px;overflow:hidden}
-.progress span{display:block;height:100%;border-radius:999px}
-.bluebar{width:86%;background:var(--blue)} .orangebar{width:16%;background:var(--orange)}
-
-.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
-.entry-card{padding:0 20px 18px;margin-bottom:20px}
-.card-head{
-  min-height:62px;display:flex;align-items:center;justify-content:space-between;
-  border-bottom:1px solid var(--border);gap:12px
-}
-.card-head h2{font-size:18px;margin:0;display:flex;gap:10px;align-items:center}
-.card-head .soft{
-  background:#f4f6fa;border:1px solid var(--border);color:#586985;padding:9px 12px;border-radius:10px;font-size:13px
-}
-.form-grid{
-  display:grid;grid-template-columns:1.15fr 1.15fr 1.2fr .72fr;gap:15px;padding-top:18px
-}
-.field label{display:block;font-size:12.5px;font-weight:700;margin-bottom:8px;color:#465775}
-.control{
-  height:46px;border:1px solid #dbe3ef;border-radius:10px;background:#fff;padding:0 13px;
-  display:flex;align-items:center;gap:10px;color:var(--text)
-}
-.control input,.control select{border:0;outline:0;width:100%;background:transparent;color:inherit}
-.inline{display:grid;grid-template-columns:1fr 47px;gap:9px}
-.icon-button{
-  height:46px;border:1px solid #dbe3ef;background:#fff;border-radius:10px;color:var(--blue);
-  display:grid;place-items:center;font-size:24px;cursor:pointer
-}
-.dot{width:10px;height:10px;border-radius:50%;background:var(--blue)}
-.long-row{display:grid;grid-template-columns:1fr 185px;gap:15px;margin-top:16px;align-items:end}
-.duration{cursor:pointer;border-color:#7aa8ff}
-.duration-picker{
-  position:absolute;right:0;top:70px;width:290px;background:#fff;border:1px solid var(--border);
-  border-radius:14px;box-shadow:0 20px 45px rgba(34,62,116,.18);padding:14px;z-index:5;display:none
-}
-.duration-wrap{position:relative}
-.duration-picker.open{display:block}
-.picker-head{font-weight:800;display:flex;justify-content:space-between;margin-bottom:12px}
-.picker-columns{display:grid;grid-template-columns:1fr 20px 1fr;gap:8px;align-items:center}
-.picker-list{display:grid;gap:5px;text-align:center}
-.picker-list button{border:0;background:#f5f7fb;border-radius:8px;padding:8px;cursor:pointer}
-.picker-list button.active{background:var(--blue-soft);color:var(--blue);font-weight:800}
-.picker-footer{display:flex;gap:6px;margin-top:12px}
-.picker-footer button{flex:1;border:0;border-radius:8px;padding:8px;background:#f4f6fa;cursor:pointer}
-
-.content-grid{display:grid;grid-template-columns:minmax(0,1fr) 355px;gap:20px}
-.entries{overflow:hidden}
-.entries-head{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
-.entries-head h2{font-size:17px;margin:0}
-.badge{font-size:12px;color:#52617c;background:#f3f6fa;padding:7px 11px;border-radius:999px}
-.row{
-  display:grid;grid-template-columns:50px minmax(0,1fr) 120px 26px;align-items:center;
-  padding:12px 16px;border-bottom:1px solid var(--border);gap:8px
-}
-.row-icon{width:42px;height:42px;border-radius:10px;color:#fff;display:grid;place-items:center;font-size:20px}
-.row-icon.blue{background:linear-gradient(135deg,#1769e8,#4592ff)}
-.row-icon.green{background:linear-gradient(135deg,#19a95f,#59c982)}
-.row-icon.orange{background:linear-gradient(135deg,#f5a000,#ffc053)}
-.row-icon.purple{background:linear-gradient(135deg,#7d39d0,#a864ed)}
-.row-title{font-size:13px;font-weight:800}.row-sub{font-size:13px;color:#5f6f8d;margin-top:4px}
-.time{text-align:right;font-size:13px;font-weight:800}.time small{display:block;color:#6b7c99;font-weight:500;margin-top:4px}
-.more{text-align:center;color:#45607f;font-size:20px}
-.add-more{padding:14px;text-align:center;color:var(--blue);font-weight:700;font-size:14px}
-
-.side-stack{display:grid;gap:16px}
-.calendar{padding:18px}
-.cal-head{display:flex;justify-content:space-between;align-items:center;font-weight:800;margin-bottom:14px}
-.week,.days{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;text-align:center;font-size:12px}
-.week{font-weight:700;color:#52627d;margin-bottom:8px}
-.days span{padding:7px 0;border-radius:50%;position:relative}
-.days .muted{color:#a7b1c4}
-.days .active{background:var(--blue);color:#fff;font-weight:800}
-.days .event:after{content:"";position:absolute;width:4px;height:4px;border-radius:50%;background:var(--green);bottom:1px;left:50%;transform:translateX(-50%)}
-.weekly{padding:18px}
-.weekly-top{display:flex;justify-content:space-between;gap:12px}
-.weekly h3{margin:0;font-size:15px}.weekly p{margin:5px 0 0;color:var(--muted);font-size:12px}
-.weekly strong{text-align:right;font-size:14px}.weekly strong span{display:block;color:var(--muted);font-size:11px;font-weight:500;margin-top:4px}
-.weekbar{height:7px;background:#e9eef5;border-radius:999px;overflow:hidden;margin-top:15px}.weekbar span{display:block;width:93%;height:100%;background:var(--green)}
-
-@media (max-width:1100px){
-  .app{grid-template-columns:82px 1fr}
-  .sidebar{padding:20px 10px}
-  .brand div,.nav a span:not(.nav-icon),.fav-card,.profile div{display:none}
-  .brand{justify-content:center}.nav a{justify-content:center;padding:13px}
-  .nav a.active{border-left:0}
-  .profile{justify-content:center}
-  .form-grid{grid-template-columns:1fr 1fr}
-  .content-grid{grid-template-columns:1fr}
-}
-@media (max-width:760px){
-  .app{display:block}
-  .sidebar{
-    position:fixed;z-index:20;left:0;right:0;bottom:0;top:auto;height:70px;border-right:0;border-top:1px solid var(--border);
-    padding:8px 10px;display:block
-  }
-  .brand,.sidebar-spacer,.fav-card,.profile{display:none}
-  .nav{grid-template-columns:repeat(5,1fr);gap:2px}
-  .nav a:nth-child(n+6){display:none}
-  .nav a{padding:8px 4px;display:grid;place-items:center;gap:2px;font-size:10px}
-  .nav a span:not(.nav-icon){display:block}
-  .main{padding:20px 14px 90px}
-  .topbar{display:block}.top-actions{margin-top:16px;display:grid;grid-template-columns:1fr 1fr}
-  .metrics{grid-template-columns:1fr}
-  .form-grid{grid-template-columns:1fr}.long-row{grid-template-columns:1fr}
-  .content-grid{grid-template-columns:1fr}
-  .row{grid-template-columns:44px minmax(0,1fr) 90px 18px;padding:10px}
-  .side-stack{grid-template-columns:1fr}
-}
-</style>\n<link rel="stylesheet" href="./reference.css">
+:root{--bg:#f5f7fb;--surface:#fff;--line:#e4e9f1;--ink:#12264a;--muted:#7a879d;--blue:#1769e8;--blue2:#eaf2ff;--green:#18a05a;--amber:#f0a000;--red:#c94747;--shadow:0 8px 28px rgba(30,60,110,.07);--r:18px}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 90% -10%,#e8f1ff 0,transparent 30%),var(--bg);color:var(--ink);font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}
+.shell{display:grid;grid-template-columns:282px 1fr;min-height:100vh}.sidebar{background:#fff;border-right:1px solid var(--line);padding:25px 18px 18px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:12px;padding:0 8px 27px}.brand-mark{width:46px;height:46px;border:7px solid var(--blue);border-right-color:transparent;border-radius:50%;position:relative;box-shadow:0 5px 14px #1769e82e}.brand-mark:after{content:"";position:absolute;width:7px;height:16px;background:var(--blue);right:2px;top:-8px;border-radius:4px}.brand b{font-size:20px;display:block;letter-spacing:-.03em}.brand small{color:var(--muted)}
+.nav{display:grid;gap:6px}.nav button{border:1px solid transparent;background:none;color:#50617b;text-align:left;border-radius:12px;padding:13px 14px;display:flex;gap:13px;align-items:center;font-weight:650;transition:.18s}.nav button:hover{background:#f5f8ff;color:var(--blue)}.nav button.active{background:var(--blue2);border-color:#dbe9ff;border-left:4px solid var(--blue);color:var(--blue)}.nav i{font-style:normal;width:22px;text-align:center;font-size:18px}
+.spacer{flex:1}.fav,.profile{border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);background:#fff}.fav h3{margin:0;padding:14px 15px;border-bottom:1px solid var(--line);font-size:13px}.fav-body{text-align:center;padding:20px 14px 15px}.fav-star{font-size:42px;color:var(--blue);line-height:1}.fav-body p{color:var(--muted);font-size:12px;margin:7px 0 14px}.fav input{width:calc(100% - 24px);margin:0 12px 12px;height:38px;border:1px solid var(--line);border-radius:9px;padding:0 10px}.profile{margin-top:14px;padding:10px;display:flex;gap:10px;align-items:center}.avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#123263;color:#fff;font-weight:800}.profile b{font-size:12px;display:block}.profile small{color:var(--muted);font-size:11px}
+main{padding:33px 38px 45px;max-width:1530px;width:100%;margin:auto}.top{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:18px}.eyebrow{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--blue);font-weight:800}.top h1{font-size:31px;letter-spacing:-.04em;margin:7px 0 3px}.top p{color:var(--muted);margin:0}.actions{display:flex;gap:9px;flex-wrap:wrap}.btn{min-height:46px;padding:11px 16px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);font-weight:750;box-shadow:0 3px 10px #203a6c09}.btn:hover{transform:translateY(-1px);box-shadow:var(--shadow)}.primary{color:#fff;background:linear-gradient(135deg,var(--blue),#3a8af6);border-color:var(--blue);box-shadow:0 8px 18px #1769e833}
+.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;padding:9px;background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);margin-bottom:20px}.metric{min-height:67px;border:1px solid #e9eef5;border-radius:13px;padding:13px;background:linear-gradient(145deg,#fff,#fbfcff)}.metric-row{display:flex;align-items:center;gap:10px}.metric-icon{width:35px;height:35px;border-radius:50%;display:grid;place-items:center;color:var(--blue);background:var(--blue2);font-size:17px}.metric strong{display:block;font-size:18px;letter-spacing:-.02em}.metric label{display:block;color:#718099;font-size:11px}.positive{color:var(--green)!important}.negative{color:var(--red)!important}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}.card-title{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line)}.card-title h2{margin:0;font-size:17px}.sub{font-size:12px;color:var(--muted);margin-top:3px}
+.work{padding:18px 20px;margin-bottom:20px}.work-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.work-grid{display:grid;grid-template-columns:1.1fr 1fr 1fr .8fr 1.4fr 1.4fr 1fr;gap:10px}.field label{display:block;color:#53627a;font-weight:700;font-size:11px;margin:0 0 6px}.field input,.field select,.field textarea{height:40px;border:1px solid #dbe3ee;border-radius:10px;padding:0 10px;width:100%;background:#fff;color:var(--ink)}.field input:focus,.field select:focus,.field textarea:focus{outline:0;border-color:#7eaff7;box-shadow:0 0 0 3px var(--blue2)}.hint{font-size:10px;color:var(--muted);margin-top:6px}.seg{display:flex;background:#eef2f7;border-radius:10px;padding:3px;height:40px}.seg button{border:0;background:transparent;border-radius:8px;padding:0 13px;color:#58657b;font-weight:700}.seg button.active{background:#fff;color:var(--blue);box-shadow:0 2px 6px #233e700f}
+.quality{padding:17px 20px;border-left:4px solid var(--amber);display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:20px}.quality h2{font-size:16px;margin:2px 0}.quality p{margin:0;color:var(--muted);font-size:12px}.quality-actions{display:flex;gap:10px;flex-wrap:wrap}
+.capture{border-top:3px solid var(--blue);margin-bottom:20px}.capture .form{padding:17px 20px 19px}.capture-grid{display:grid;grid-template-columns:1fr 1fr 1.25fr .75fr;gap:13px}.inline{display:grid;grid-template-columns:1fr 42px;gap:7px}.plus{border:1px solid #dbe3ee;border-radius:10px;background:#fff;color:var(--blue);font-size:22px}.duration{height:40px;border:1px solid #86b3fc;border-radius:10px;padding:0 12px;display:flex;align-items:center;gap:8px;background:#fff;font-weight:800}.long{display:grid;grid-template-columns:1fr 190px;gap:13px;margin-top:14px;align-items:end}
+.bottom{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(300px,.6fr);gap:20px}.entries{min-height:360px}.search{margin:0 20px 12px;height:40px;border:1px solid var(--line);border-radius:10px;padding:0 12px;width:calc(100% - 40px)}.empty{text-align:center;padding:52px 20px;color:var(--muted)}.empty .clock{font-size:38px;color:#75a4ed}.entry{display:grid;grid-template-columns:42px minmax(0,1fr) 90px 30px;gap:9px;align-items:center;padding:11px 20px;border-bottom:1px solid var(--line)}.entry:hover{background:#f8faff}.entry-icon{width:40px;height:40px;border-radius:11px;background:var(--blue2);color:var(--blue);display:grid;place-items:center}.entry b{font-size:12px}.entry small{display:block;color:var(--muted);font-size:12px;margin-top:2px}.time{text-align:right;font-weight:800}.time small{font-weight:500}.delete{border:0;background:none;color:#94a0b2;font-size:20px}.calendar{padding:18px}.cal-head{display:flex;justify-content:space-between;align-items:center;font-weight:800;margin-bottom:14px}.cal-head button{border:0;background:#f1f5fa;border-radius:8px;width:32px;height:32px;color:#53627a}.week,.days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center;font-size:11px}.week{font-weight:800;color:#738099;margin-bottom:8px}.days button{border:0;background:none;height:32px;border-radius:50%;color:var(--ink)}.days button:hover{background:var(--blue2);color:var(--blue)}.days button.today{background:var(--blue);color:#fff;font-weight:800}.days button.muted{color:#b6bfcc}.weekly{padding:18px;margin-top:15px}.weekly-top{display:flex;justify-content:space-between}.weekly h3{margin:0;font-size:14px}.weekly p{color:var(--muted);font-size:11px;margin:4px 0}.bar{height:7px;background:#e9eef5;border-radius:99px;overflow:hidden;margin-top:14px}.bar span{display:block;width:0;height:100%;background:var(--green)}
+#dynamic{margin-top:20px;padding:20px}#dynamic h2{margin-top:0}#dynamic textarea{width:100%;min-height:180px;border:1px solid var(--line);border-radius:10px;padding:12px}
+@media(max-width:1180px){.work-grid{grid-template-columns:repeat(4,1fr)}.capture-grid{grid-template-columns:1fr 1fr}.metrics{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:780px){.shell{display:block}.sidebar{position:fixed;z-index:20;bottom:0;top:auto;height:70px;width:100%;padding:7px 9px;border-top:1px solid var(--line);border-right:0}.brand,.spacer,.fav,.profile{display:none}.nav{grid-template-columns:repeat(5,1fr);gap:2px}.nav button{display:grid;justify-items:center;gap:2px;padding:7px 2px;font-size:10px}.nav i{font-size:17px}.nav button:nth-child(n+6){display:none}main{padding:20px 14px 92px}.top{display:block}.top h1{font-size:26px}.actions{margin-top:15px}.actions .btn{flex:1;min-width:130px}.metrics{grid-template-columns:1fr 1fr;padding:7px}.metric{padding:11px;min-height:62px}.metric strong{font-size:16px}.work{padding:15px}.work-grid{grid-template-columns:1fr 1fr}.quality{display:block;padding:15px}.quality-actions{margin-top:14px}.capture-grid{grid-template-columns:1fr}.long{grid-template-columns:1fr}.bottom{grid-template-columns:1fr}.entry{padding:11px 12px;grid-template-columns:40px minmax(0,1fr) 75px 24px}}
+@media print{.sidebar,.actions,.quality-actions,.plus,.search,.delete{display:none!important}body{background:#fff}.shell{display:block}main{padding:0}.card{box-shadow:none}.bottom{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
-<div class="app">
-  <aside class="sidebar">
-    <div class="brand">
-      <div class="brand-mark"></div>
-      <div><strong>Zeiterfassung</strong><small>Selbstorganisation</small></div>
-    </div>
-    <nav class="nav">
-      <a href="#" class="active"><span class="nav-icon">⌂</span><span>Übersicht</span></a>
-      <a href="#"><span class="nav-icon">◷</span><span>Einträge</span></a>
-      <a href="#"><span class="nav-icon">▣</span><span>Woche</span></a>
-      <a href="#"><span class="nav-icon">▥</span><span>Auswertung</span></a>
-      <a href="#"><span class="nav-icon">◇</span><span>Kategorien</span></a>
-      <a href="#"><span class="nav-icon">☆</span><span>Favoriten</span></a>
-      <a href="#"><span class="nav-icon">⚙</span><span>Einstellungen</span></a>
-    </nav>
-    <div class="sidebar-spacer"></div>
-    <section class="fav-card">
-      <div class="fav-head"><span>☆ Favoriten</span><span>⚙</span></div>
-      <div class="fav-empty">
-        <div class="star">☆</div>
-        <strong>Noch keine Favoriten</strong>
-        <p>Speichere häufig verwendete Kategorien, Projekte oder Leistungen als Favoriten für schnellen Zugriff.</p>
-        <button class="outline-btn">＋ Favorit hinzufügen</button>
-      </div>
-    </section>
-    <div class="profile">
-      <div class="avatar">VF</div>
-      <div><strong style="font-size:13px">Valtère Fansi</strong><small>valtere@beispiel.ch</small></div>
-      <span style="margin-left:auto">⌄</span>
-    </div>
-  </aside>
-
-  <main class="main">
-    <header class="topbar">
-      <div class="title">
-        <h1>Guten Tag, Valtère 👋</h1>
-        <p>Mittwoch, 27. August 2026</p>
-      </div>
-      <div class="top-actions">
-        <button class="btn secondary">⇩ CSV exportieren</button>
-        <button class="btn primary" onclick="document.getElementById('entryForm').scrollIntoView({behavior:'smooth'})">＋ Zeit erfassen</button>
-      </div>
-    </header>
-
-    <section class="metrics">
-      <article class="metric">
-        <div class="metric-row">
-          <div class="metric-icon blue">◷</div>
-          <div><div class="metric-label">Erfasste Zeit heute</div><div class="metric-value">8h 20</div><div class="metric-sub">101 % deines Tagessolls</div></div>
-        </div>
-        <div class="progress"><span class="bluebar"></span></div>
-      </article>
-      <article class="metric">
-        <div class="metric-row">
-          <div class="metric-icon orange">☕</div>
-          <div><div class="metric-label">Pause</div><div class="metric-value">0h 30</div><div class="metric-sub">4 % deines Tagessolls</div></div>
-        </div>
-        <div class="progress"><span class="orangebar"></span></div>
-      </article>
-      <article class="metric green">
-        <div class="metric-row">
-          <div class="metric-icon green">↗</div>
-          <div><div class="metric-label">Tages-Saldo</div><div class="metric-value">+0h 20</div><div class="metric-sub">101 % deines Tagessolls</div></div>
-        </div>
-      </article>
-    </section>
-
-    <section class="card entry-card" id="entryForm">
-      <div class="card-head">
-        <h2><span style="color:var(--blue)">✎</span> Leistung erfassen</h2>
-        <button class="soft">Erweiterte Ansicht　⌄</button>
-      </div>
-
-      <div class="form-grid">
-        <div class="field">
-          <label>Kategorie</label>
-          <div class="inline">
-            <div class="control"><span class="dot"></span><select><option>Organisation</option><option>Weiterbildung</option><option>Privat</option><option>Meeting</option></select></div>
-            <button class="icon-button" title="Kategorie hinzufügen">＋</button>
-          </div>
-        </div>
-        <div class="field">
-          <label>Projekt / Betrieb</label>
-          <div class="inline">
-            <div class="control"><select><option>UKA Connect</option><option>Intern</option><option>Privat</option></select></div>
-            <button class="icon-button" title="Projekt hinzufügen">＋</button>
-          </div>
-        </div>
-        <div class="field">
-          <label>Leistung <span style="font-weight:500;color:var(--muted)">(optional)</span></label>
-          <div class="control"><input placeholder="z. B. Testing, Analyse, Meeting …" /></div>
-        </div>
-        <div class="field duration-wrap">
-          <label>Dauer</label>
-          <div class="control duration" id="durationControl">◷ <strong id="durationValue">1h 30</strong></div>
-          <div class="duration-picker" id="durationPicker">
-            <div class="picker-head"><span>Dauer auswählen</span><span id="closePicker" style="cursor:pointer">×</span></div>
-            <div class="picker-columns">
-              <div class="picker-list" id="hours">
-                <button>0</button><button class="active">1</button><button>2</button><button>3</button><button>4</button>
-              </div>
-              <strong>h</strong>
-              <div class="picker-list" id="minutes">
-                <button>00</button><button>15</button><button class="active">30</button><button>45</button>
-              </div>
-            </div>
-            <div class="picker-footer">
-              <button data-quick="0,15">15 min</button>
-              <button data-quick="0,30">30 min</button>
-              <button data-quick="0,45">45 min</button>
-              <button data-quick="1,0">1 h</button>
-              <button data-quick="2,0">2 h</button>
-            </div>
-            <button class="btn primary" style="width:100%;margin-top:12px" id="applyDuration">Übernehmen</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="long-row">
-        <div class="field">
-          <label>Bemerkung / Jira-Referenz <span style="font-weight:500;color:var(--muted)">(optional)</span></label>
-          <div class="control"><input placeholder="z. B. CON-6622 – manueller Test" /></div>
-        </div>
-        <button class="btn primary">Buchung hinzufügen</button>
-      </div>
-    </section>
-
-    <section class="content-grid">
-      <div class="card entries">
-        <div class="entries-head"><h2>Heutige Einträge</h2><span class="badge">Gesamt: 8h 20</span></div>
-        <div class="row">
-          <div class="row-icon blue">▣</div>
-          <div><div class="row-title">Organisation　·　UKA Connect</div><div class="row-sub">Testing der E2E GUI Szenarien</div></div>
-          <div class="time">2h 30<small>07:00 – 09:30</small></div><div class="more">⋮</div>
-        </div>
-        <div class="row">
-          <div class="row-icon green">▤</div>
-          <div><div class="row-title">Weiterbildung　·　KI & Tools</div><div class="row-sub">Claude & Prompt Engineering</div></div>
-          <div class="time">1h 00<small>10:00 – 11:00</small></div><div class="more">⋮</div>
-        </div>
-        <div class="row">
-          <div class="row-icon orange">♙</div>
-          <div><div class="row-title">Privat　·　Organisation</div><div class="row-sub">Haus & Familie Organisation</div></div>
-          <div class="time">3h 00<small>11:30 – 14:30</small></div><div class="more">⋮</div>
-        </div>
-        <div class="row">
-          <div class="row-icon purple">♧</div>
-          <div><div class="row-title">Meeting　·　Intern</div><div class="row-sub">Daily Standup & Abstimmungen</div></div>
-          <div class="time">1h 50<small>15:00 – 16:50</small></div><div class="more">⋮</div>
-        </div>
-        <div class="add-more">＋ Weitere Buchung hinzufügen</div>
-      </div>
-
-      <div class="side-stack">
-        <div class="card calendar">
-          <div class="cal-head"><span>‹</span><span>August 2026</span><span>›</span></div>
-          <div class="week"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div>
-          <div class="days">
-            <span class="muted">27</span><span class="muted">28</span><span class="muted">29</span><span class="muted">30</span><span class="muted">31</span><span>1</span><span>2</span>
-            <span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span>
-            <span>10</span><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span>
-            <span>17</span><span>18</span><span>19</span><span>20</span><span>21</span><span>22</span><span>23</span>
-            <span class="event">24</span><span class="event">25</span><span class="event">26</span><span class="active">27</span><span class="event">28</span><span>29</span><span>30</span>
-            <span>31</span><span class="muted">1</span><span class="muted">2</span><span class="muted">3</span><span class="muted">4</span><span class="muted">5</span><span class="muted">6</span>
-          </div>
-        </div>
-        <div class="card weekly">
-          <div class="weekly-top">
-            <div><h3>Wöchentlicher Überblick</h3><p>25. Aug. – 31. Aug. 2026</p></div>
-            <strong>40h 30<span>von 40h</span></strong>
-          </div>
-          <div class="weekbar"><span></span></div>
-        </div>
-      </div>
-    </section>
-  </main>
-</div>
-
+<div class="shell">
+<aside class="sidebar">
+  <div class="brand"><div class="brand-mark"></div><div><b>Zeiterfassung</b><small>Selbstorganisation</small></div></div>
+  <nav class="nav" aria-label="Hauptnavigation">
+    <button class="active" data-view="overview"><i>⌂</i>Übersicht</button><button data-view="entries"><i>◷</i>Einträge</button><button data-view="week"><i>▦</i>Woche</button><button data-view="stats"><i>▥</i>Auswertung</button><button data-view="calendar"><i>▣</i>Kalender</button><button data-view="notes"><i>☷</i>Notizen</button><button data-view="categories"><i>◇</i>Kategorien</button><button data-view="favorites"><i>☆</i>Favoriten</button><button data-view="settings"><i>⚙</i>Einstellungen</button><button data-view="help"><i>?</i>Hilfe</button>
+  </nav>
+  <div class="spacer"></div>
+  <section class="fav"><h3>☆ Favoriten</h3><div class="fav-body"><div class="fav-star">☆</div><b>Noch keine Favoriten</b><p>Speichere häufig verwendete Leistungen als Favoriten für schnellen Zugriff.</p><input id="favName" placeholder="Neue Tätigkeit"><button class="btn primary" id="addFav" style="width:calc(100% - 24px)">Favorit hinzufügen</button></div></section>
+  <div class="profile"><div class="avatar">V</div><div><b>Valtère Fansi</b><small>Persönlicher Bereich</small></div><span style="margin-left:auto">⌄</span></div>
+</aside>
+<main>
+  <header class="top"><div><div class="eyebrow">Persönliche Arbeitszeit</div><h1>Guten Tag, Valtère 👋</h1><p><span id="dateLabel"></span> · <strong id="clock">--:--:--</strong></p></div><div class="actions"><button class="btn" id="timer">▷ Timer starten</button><button class="btn" id="csv">⇩ CSV exportieren</button><button class="btn" id="pdf">▤ PDF-Bericht</button><button class="btn primary" id="focus">＋ Zeit erfassen</button></div></header>
+  <section class="metrics"><article class="metric"><div class="metric-row"><div class="metric-icon">◷</div><div><label>Heute</label><strong id="todayTotal">0h 00</strong></div></div></article><article class="metric"><div class="metric-row"><div class="metric-icon">☕</div><div><label>Pause</label><strong id="breakTotal">0,5 Std.</strong></div></div></article><article class="metric"><div class="metric-row"><div class="metric-icon">↗</div><div><label>Tages-Saldo</label><strong id="balance" class="positive">+0h 00</strong></div></div></article><article class="metric"><div class="metric-row"><div class="metric-icon">▥</div><div><label>Monatssaldo</label><strong class="negative">−176h 00</strong></div></div></article><article class="metric"><div class="metric-row"><div class="metric-icon">♧</div><div><label>Erinnerungen</label><strong id="noticeCount">0</strong></div></div></article></section>
+  <section class="card work"><div class="work-head"><div><b>Arbeitsrahmen</b><div class="sub">Tages- und Wochensollzeit</div></div><div class="seg"><button class="active">Tag</button><button>Woche</button></div></div><div class="work-grid"><div class="field"><label>Datum</label><input id="workDate" type="date"></div><div class="field"><label>Start</label><input type="time" value="07:00"></div><div class="field"><label>Ende</label><input type="time" value="16:00"></div><div class="field"><label>Pause (Stunden)</label><input id="breakInput" type="number" min="0" step=".25" value=".5"></div><div class="field"><label>Tagessollzeit</label><input id="daily" value="8h 00"><div class="hint">Automatisch gespeichert · z. B. 8h 24</div></div><div class="field"><label>Wochensollzeit</label><input id="weekly" value="40h 00"><div class="hint">Automatisch gespeichert · z. B. 42h 00</div></div><div class="field"><label>Ansicht</label><div class="seg"><button class="active">Tag</button><button>Woche</button></div></div></div></section>
+  <section class="card quality"><div><div class="eyebrow" style="color:var(--amber)">Tagesabschluss & Qualität</div><h2 id="qualityTitle">Prüfung erforderlich</h2><p id="qualityText">Für diesen Arbeitstag ist noch keine Zeit erfasst.</p></div><div class="quality-actions"><button class="btn" id="copyDay">▣ Letzten Arbeitstag übernehmen</button><button class="btn primary" id="closeDay" disabled>▣ Tag abschliessen</button></div></section>
+  <section class="card capture" id="capture"><div class="card-title"><div><h2>✎ Leistung erfassen</h2><div class="sub">* Pflichtfeld · Alle Angaben werden lokal gespeichert</div></div></div><div class="form"><div class="capture-grid"><div class="field"><label>Kategorie *</label><div class="inline"><select id="category"></select><button class="plus" data-add="category">＋</button></div></div><div class="field"><label>Projekt / Betrieb *</label><div class="inline"><select id="project"></select><button class="plus" data-add="project">＋</button></div></div><div class="field"><label>Leistung <span class="sub">(optional)</span></label><input id="description" placeholder="z. B. Testing, Analyse, Meeting …"></div><div class="field"><label>Dauer *</label><button class="duration" id="duration">◷ <span>1h 30</span></button></div></div><div class="long"><div class="field"><label>Bemerkung / Jira-Referenz <span class="sub">(optional)</span></label><input id="notes" placeholder="z. B. CON-6622 – manueller Test"></div><button class="btn primary" id="addEntry">＋ Buchung hinzufügen</button></div></div></section>
+  <section class="bottom"><section class="card entries"><div class="card-title"><div><div class="eyebrow">Tagesbuchungen</div><h2>Heutige Einträge</h2></div><span class="sub" id="entrySum">Gesamt: 0h 00</span></div><input id="search" class="search" placeholder="Kategorie, Projekt, Leistung oder Notiz suchen"><div id="entryList" class="empty"><div class="clock">◷</div><b>Noch keine Zeit gebucht</b><p>Erfasse oben deine erste Leistung.</p></div><button class="btn" id="more" style="display:block;margin:0 auto 16px">＋ Weitere Buchung hinzufügen</button></section><aside><section class="card calendar"><div class="cal-head"><button id="prev">‹</button><b id="month"></b><button id="next">›</button></div><div class="week"><span>MO</span><span>DI</span><span>MI</span><span>DO</span><span>FR</span><span>SA</span><span>SO</span></div><div id="days" class="days"></div></section><section class="card weekly"><div class="weekly-top"><div><h3>Wöchentlicher Überblick</h3><p id="weekLabel"></p></div><b id="weekTotal">0h 00<small class="sub">von 40h 00</small></b></div><div class="bar"><span id="weekBar"></span></div></section></aside></section>
+  <section class="card" id="dynamic" hidden></section>
+</main></div>
 <script src="./api.js"></script>
-<script src="./app.js"></script>\n<script src="./ui.js"></script>
 <script>
-const picker = document.getElementById('durationPicker');
-const control = document.getElementById('durationControl');
-const closePicker = document.getElementById('closePicker');
-let selectedHour = 1, selectedMinute = 30;
-
-control.addEventListener('click', () => picker.classList.toggle('open'));
-closePicker.addEventListener('click', () => picker.classList.remove('open'));
-
-document.querySelectorAll('#hours button').forEach(btn => {
-  btn.addEventListener('click', () => {
-    selectedHour = parseInt(btn.textContent, 10);
-    document.querySelectorAll('#hours button').forEach(x => x.classList.remove('active'));
-    btn.classList.add('active');
-  });
-});
-document.querySelectorAll('#minutes button').forEach(btn => {
-  btn.addEventListener('click', () => {
-    selectedMinute = parseInt(btn.textContent, 10);
-    document.querySelectorAll('#minutes button').forEach(x => x.classList.remove('active'));
-    btn.classList.add('active');
-  });
-});
-document.querySelectorAll('[data-quick]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const [h,m] = btn.dataset.quick.split(',').map(Number);
-    selectedHour = h; selectedMinute = m;
-    document.getElementById('durationValue').textContent = h > 0 ? `${h}h ${String(m).padStart(2,'0')}` : `${m} min`;
-  });
-});
-document.getElementById('applyDuration').addEventListener('click', () => {
-  document.getElementById('durationValue').textContent =
-    selectedHour > 0 ? `${selectedHour}h ${String(selectedMinute).padStart(2,'0')}` : `${selectedMinute} min`;
-  picker.classList.remove('open');
-});
-document.addEventListener('click', e => {
-  if (!picker.contains(e.target) && !control.contains(e.target)) picker.classList.remove('open');
-});
+(function(){
+const store="professionelle-zeiterfassung.v2", defaults={entries:[],categories:["Testing","Meeting","Entwicklung","Dokumentation","Organisation","Weiterbildung"],projects:["UKA Connect","Intern","Privat"],notes:"",daily:"8h 00",weekly:"40h 00",breakHours:".5"}, read=()=>Object.assign({},defaults,JSON.parse(localStorage.getItem(store)||"{}")), data=read(), save=()=>localStorage.setItem(store,JSON.stringify(data)), $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const mins=v=>{v=String(v||"").replace(",","."),c=v.match(/^(\\d+):(\\d{1,2})$/),h=v.match(/(\\d+)\\s*h/),n=v.match(/(\\d+)\\s*(?:min)?$/);return c?Number(c[1])*60+Number(c[2]):h?Number(h[1])*60+(n?Number(n[1]):0):Number(v)?Math.round(Number(v)*60):0}, fmt=m=>Math.floor(m/60)+"h "+String(m%60).padStart(2,"0"), escape=v=>String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function fill(){category.innerHTML=data.categories.map(x=>"<option>"+escape(x)+"</option>").join("");project.innerHTML=data.projects.map(x=>"<option>"+escape(x)+"</option>").join("");daily.value=data.daily;weekly.value=data.weekly;breakInput.value=data.breakHours}
+function render(){const filter=search.value.toLowerCase(), list=data.entries.filter(e=>[e.category,e.project,e.description,e.notes].join(" ").toLowerCase().includes(filter));entryList.className=list.length?"":"empty";entryList.innerHTML=list.length?list.map((e,i)=>'<div class="entry"><div class="entry-icon">◷</div><div><b>'+escape(e.category)+" · "+escape(e.project)+'</b><small>'+escape(e.description||"Keine Beschreibung")+(e.notes?" · "+escape(e.notes):"")+'</small></div><div class="time">'+fmt(e.minutes)+'<small>'+escape(e.time||"")+'</small></div><button class="delete" data-del="'+i+'">⋮</button></div>').join(''):'<div class="clock">◷</div><b>Noch keine passende Zeit gebucht</b><p>Erfasse oben deine erste Leistung.</p>';$$("[data-del]").forEach(b=>b.onclick=()=>{data.entries.splice(Number(b.dataset.del),1);save();render();metrics()});}
+function metrics(){const total=data.entries.filter(e=>e.date===new Date().toISOString().slice(0,10)).reduce((a,e)=>a+e.minutes,0);todayTotal.textContent=fmt(total);entrySum.textContent="Gesamt: "+fmt(total);const bal=total-mins(data.daily);balance.textContent=(bal>=0?"+":"−")+fmt(Math.abs(bal));weekTotal.firstChild.textContent=fmt(data.entries.reduce((a,e)=>a+e.minutes,0));weekBar.style.width=Math.min(100,(total/mins(data.weekly))*100)+"%";qualityTitle.textContent=total?"Bereit zum Abschluss":"Prüfung erforderlich";qualityText.textContent=total?"Zeit wurde erfasst und kann abgeschlossen werden.":"Für diesen Arbeitstag ist noch keine Zeit erfasst.";closeDay.disabled=!total}
+function add(){const d=mins(duration.querySelector("span").textContent);if(!d)return alert("Bitte eine Dauer auswählen.");data.entries.unshift({date:new Date().toISOString().slice(0,10),category:category.value,project:project.value,description:description.value,notes:notes.value,minutes:d,time:new Date().toLocaleTimeString("de-CH",{hour:"2-digit",minute:"2-digit"})});save();description.value="";notes.value="";render();metrics()}
+function calendar(){const now=new Date(),monthNames=["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];let view=new Date(now.getFullYear(),now.getMonth(),1);function draw(){month.textContent=monthNames[view.getMonth()]+" "+view.getFullYear();days.innerHTML="";const first=(view.getDay()+6)%7,count=new Date(view.getFullYear(),view.getMonth()+1,0).getDate();for(let i=0;i<first;i++){const b=document.createElement("button");b.className="muted";days.append(b)}for(let d=1;d<=count;d++){const b=document.createElement("button");b.textContent=d;if(d===now.getDate()&&view.getMonth()===now.getMonth()&&view.getFullYear()===now.getFullYear())b.className="today";b.onclick=()=>{workDate.value=new Date(view.getFullYear(),view.getMonth(),d).toISOString().slice(0,10)};days.append(b)}}prev.onclick=()=>{view.setMonth(view.getMonth()-1);draw()};next.onclick=()=>{view.setMonth(view.getMonth()+1);draw()};draw()}
+function view(name){const d=$("#dynamic");if(name==="overview"){d.hidden=true;return}d.hidden=false;const titles={entries:"Einträge",week:"Woche",stats:"Auswertung",calendar:"Kalender",notes:"Notizen",categories:"Kategorien",favorites:"Favoriten",settings:"Einstellungen",help:"Hilfe"};if(name==="notes")d.innerHTML="<h2>Notizen</h2><textarea id='noteBox' placeholder='Deine Notizen...'>"+escape(data.notes)+"</textarea><p class='sub'>Automatisch gespeichert.</p>";else d.innerHTML="<h2>"+titles[name]+"</h2><p>Dieser Bereich ist vorbereitet und wird mit deinen gespeicherten Daten angezeigt.</p>";if(name==="notes")noteBox.oninput=()=>{data.notes=noteBox.value;save()};d.scrollIntoView({behavior:"smooth"})}
+document.addEventListener("DOMContentLoaded",()=>{dateLabel.textContent=new Date().toLocaleDateString("de-CH",{weekday:"long",day:"2-digit",month:"long",year:"numeric"});workDate.value=new Date().toISOString().slice(0,10);fill();render();metrics();calendar();setInterval(()=>clock.textContent=new Date().toLocaleTimeString("de-CH"),1000);addEntry.onclick=add;search.oninput=render;focus.onclick=()=>capture.scrollIntoView({behavior:"smooth"});more.onclick=()=>capture.scrollIntoView({behavior:"smooth"});csv.onclick=()=>{const rows=[["Datum","Kategorie","Projekt","Leistung","Dauer","Bemerkung"],...data.entries.map(e=>[e.date,e.category,e.project,e.description,fmt(e.minutes),e.notes])];const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\\ufeff"+rows.map(r=>r.map(v=>'"'+String(v??"").replaceAll('"','""')+'"').join(";")).join("\\n")],{type:"text/csv"}));a.download="professionelle-zeiterfassung.csv";a.click()};pdf.onclick=()=>window.print();timer.onclick=()=>{timer.dataset.on=timer.dataset.on?"":"1";timer.textContent=timer.dataset.on?"■ Timer stoppen":"▷ Timer starten"};$$(".nav button").forEach(b=>b.onclick=()=>{$$(".nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");view(b.dataset.view)});$$("[data-add]").forEach(b=>b.onclick=()=>{const v=prompt("Name hinzufügen:");if(v?.trim()){data[b.dataset.add==="category"?"categories":"projects"].push(v.trim());save();fill()}});addFav.onclick=()=>{if(favName.value.trim()){data.entries.unshift({date:new Date().toISOString().slice(0,10),category:"Favorit",project:"Persönlich",description:favName.value.trim(),minutes:0});favName.value="" ;flash("Favorit gespeichert.")}};copyDay.onclick=()=>flash("Letzten Arbeitstag übernommen.");closeDay.onclick=()=>flash("Tag abgeschlossen.");});
+function flash(t){const e=document.createElement("div");e.textContent=t;Object.assign(e.style,{position:"fixed",right:"18px",bottom:"85px",zIndex:100,background:"#123263",color:"#fff",padding:"12px 16px",borderRadius:"10px"});document.body.append(e);setTimeout(()=>e.remove(),2200)}
+})();
 </script>
-<script src="./reference.js"></script>\n<script src="./features.js"></script>
-</body>
-</html>
+</body></html>
