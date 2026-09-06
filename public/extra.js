@@ -61,3 +61,55 @@
   }
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",enhance); else enhance();
 })();
+
+/* Ergänzende Bedienlogik: Datum, Bearbeiten, Benachrichtigungen und Sicherung */
+(() => {
+  const STORE="professionelle-zeiterfassung.v2";
+  const read=()=>Object.assign({entries:[],categories:[],projects:[],favorites:[],notes:"",daily:"8h 00",weekly:"40h 00",breakHours:".5"},JSON.parse(localStorage.getItem(STORE)||"{}"));
+  const write=v=>localStorage.setItem(STORE,JSON.stringify(v));
+  const esc=v=>String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const fmt=m=>Math.floor(Number(m||0)/60)+"h "+String(Number(m||0)%60).padStart(2,"0");
+  const selectedDate=()=>document.querySelector("#workDate")?.value||new Date().toISOString().slice(0,10);
+  const toast=t=>{const e=document.createElement("div");e.textContent=t;Object.assign(e.style,{position:"fixed",right:"18px",bottom:"85px",zIndex:100,background:"#123263",color:"#fff",padding:"12px 16px",borderRadius:"10px"});document.body.append(e);setTimeout(()=>e.remove(),2200)};
+  function refresh() {
+    document.querySelector("#search")?.dispatchEvent(new Event("input",{bubbles:true}));
+    document.querySelector("#dateLabel")?.closest(".top")?.querySelector("p");
+  }
+  function saveEntry(){
+    const d=read(), duration=document.querySelector("#duration span")?.textContent||"1h 30";
+    const category=document.querySelector("#category")?.value, project=document.querySelector("#project")?.value;
+    if(!category||!project){toast("Kategorie und Projekt sind Pflichtfelder.");return}
+    const value=duration.match(/(\d+)\s*h\s*(\d+)/i);
+    const minutes=value?Number(value[1])*60+Number(value[2]):0;
+    if(!minutes){toast("Bitte eine gültige Dauer auswählen.");return}
+    d.entries.unshift({date:selectedDate(),category,project,description:document.querySelector("#description")?.value||"",notes:document.querySelector("#notes")?.value||"",minutes,time:new Date().toLocaleTimeString("de-CH",{hour:"2-digit",minute:"2-digit"})});
+    write(d);if(document.querySelector("#description"))document.querySelector("#description").value="";if(document.querySelector("#notes"))document.querySelector("#notes").value="";
+    refresh();toast("Buchung gespeichert.");
+  }
+  function addEditActions(){
+    document.querySelectorAll("#entryList .entry").forEach((row,index)=>{
+      if(row.querySelector("[data-edit]"))return;
+      const button=document.createElement("button");button.className="delete";button.dataset.edit=index;button.title="Bearbeiten";button.textContent="✎";
+      row.append(button);
+      button.onclick=()=>{const d=read(), filter=(document.querySelector("#search")?.value||"").toLowerCase(), list=d.entries.filter(e=>[e.category,e.project,e.description,e.notes].join(" ").toLowerCase().includes(filter)), entry=list[index];if(!entry)return;
+        const desc=prompt("Leistung:",entry.description||"");if(desc===null)return;const note=prompt("Bemerkung:",entry.notes||"");if(note===null)return;entry.description=desc;entry.notes=note;write(d);refresh();toast("Buchung geändert.");};
+    });
+  }
+  function backup(){
+    const a=document.createElement("a");a.download="zeiterfassung-backup.json";a.href=URL.createObjectURL(new Blob([JSON.stringify(read(),null,2)],{type:"application/json"}));a.click();toast("Backup exportiert.");
+  }
+  function notification(){
+    const d=read(), count=d.entries.filter(e=>e.date===new Date().toISOString().slice(0,10)).length;
+    const n=document.querySelector("#noticeCount");if(n)n.textContent=count?"0":"1";
+  }
+  function enhance2(){
+    const add=document.querySelector("#addEntry");if(add)add.onclick=saveEntry;
+    const list=document.querySelector("#entryList");if(list)new MutationObserver(addEditActions).observe(list,{childList:true,subtree:true});
+    addEditActions();notification();
+    const date=document.querySelector("#workDate");date?.addEventListener("change",()=>{const label=document.querySelector("#qualityText");if(label)label.textContent="Ausgewählter Arbeitstag: "+date.value;});
+    const pdf=document.querySelector("#pdf");if(pdf)pdf.onclick=()=>{const choice=prompt("PDF-Bericht: Heute, Monat oder Alle","Heute");if(choice!==null){document.body.dataset.reportRange=choice;window.print();}};
+    const more=document.querySelector("#more");if(more)more.title="Springt zur Buchungserfassung";
+    const profile=document.querySelector(".profile");if(profile&&!document.querySelector("#backupBtn")){const b=document.createElement("button");b.id="backupBtn";b.className="btn";b.textContent="⇩ Backup";b.style.marginTop="10px";b.onclick=backup;profile.parentElement.append(b);}
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",enhance2);else enhance2();
+})();
