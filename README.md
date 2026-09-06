@@ -26,3 +26,6 @@ npm install
 npm run db:migrate
 npm run deploy
 ```
+
+
+Aktueller Funktionsstand: interaktive Workflows werden über `public/app.js` geladen.
