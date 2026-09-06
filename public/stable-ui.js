@@ -39,7 +39,13 @@
     const dailyTarget=minutes(d.daily)||480, balance=total-dailyTarget; set("balance",(balance>=0?"+":"−")+format(Math.abs(balance)));
     const bar=$("#weekBar");if(bar)bar.style.width=Math.min(100,total/Math.max(1,minutes(d.weekly)||2400)*100)+"%";
     const title=$("#qualityTitle"), text=$("#qualityText"), close=$("#closeDay");if(title)title.textContent=total?"Bereit zum Abschluss":"Prüfung erforderlich";if(text)text.textContent=total?"Zeit wurde erfasst und kann abgeschlossen werden.":"Für diesen Arbeitstag ist noch keine Zeit erfasst.";if(close)close.disabled=!total;
-    const list=$("#entryList");if(list){const q=($("#search")?.value||"").toLowerCase(), rows=d.entries.filter(e=>[e.category,e.project,e.description,e.notes].join(" ").toLowerCase().includes(q));list.className=rows.length?"":"empty";list.innerHTML=rows.length?rows.map(e=>"<div class='entry'><div class='entry-icon'>◷</div><div><b>"+escapeHtml(e.category)+" · "+escapeHtml(e.project)+"</b><small>"+escapeHtml(e.description||"Keine Beschreibung")+(e.notes?" · "+escapeHtml(e.notes):"")+"</small></div><div class='time'>"+format(e.minutes)+"<small>"+escapeHtml(e.time||"")+"</small></div></div>").join(""):"<div class='clock'>◷</div><b>Noch keine Zeit gebucht</b><p>Erfasse oben deine erste Leistung.</p>"}};
+    const list=$("#entryList");
+    if(list){
+      const q=($("#search")?.value||"").toLowerCase();
+      const rows=d.entries.filter(e=>[e.category,e.project,e.description,e.notes].join(" ").toLowerCase().includes(q));
+      list.className=rows.length?"":"empty";
+      list.innerHTML=rows.length?rows.map(e=>"<div class='entry'><div class='entry-icon'>◷</div><div><b>"+escapeHtml(e.category)+" · "+escapeHtml(e.project)+"</b><small>"+escapeHtml(e.description||"Keine Beschreibung")+(e.notes?" · "+escapeHtml(e.notes):"")+"</small></div><div class='time'>"+format(e.minutes)+"<small>"+escapeHtml(e.time||"")+"</small></div></div>").join(""):"<div class='clock'>◷</div><b>Noch keine Zeit gebucht</b><p>Erfasse oben deine erste Leistung.</p>";
+    }
   };
 
   const showModal = (title, body, action, onSave) => {
