@@ -79,3 +79,12 @@ Migrationen und Deployment:
     npx wrangler deploy
 
 E-Mail-Bestätigung und SMS sind als Integrationspunkt dokumentiert, aber erst nach Auswahl eines E-Mail-/SMS-Anbieters und Einrichtung der erforderlichen Cloudflare-Secrets aktivierbar.
+
+## Performance und Reaktionszeit
+
+- Lokale Änderungen werden über ein gebündeltes Storage-Ereignis verarbeitet.
+- Mehrfach-Refreshes durch denselben Klick werden zu einem UI-Update zusammengefasst.
+- Das frühere 500-ms-Voll-Polling über alle lokalen Daten ist entfernt.
+- Änderungen aus anderen Browser-Tabs werden über das Storage-Ereignis erkannt.
+- Erinnerungen laufen separat in einem 30-Sekunden-Intervall.
+- Navigation verwendet kein künstliches Smooth-Scrolling mehr.
