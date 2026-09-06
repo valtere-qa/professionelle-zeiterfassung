@@ -19,3 +19,13 @@
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",enhance);else enhance();
 })();
+/* Sichtbarer Einstieg für Einloggen/Registrieren */
+(() => {
+  function addEntry(){
+    const menu=document.querySelector("#rfProfile");
+    if(menu&&!menu.querySelector("#authOpen")){const b=document.createElement("button");b.id="authOpen";b.className="btn primary";b.textContent="↪ Einloggen / Registrieren";b.style.width="100%";b.style.marginBottom="10px";b.onclick=()=>window.AuthUI?.open("login");menu.insertBefore(b,menu.firstChild);}
+    const profile=document.querySelector(".profile");
+    if(profile&&!profile.parentElement.querySelector("#authQuick")){const b=document.createElement("button");b.id="authQuick";b.className="btn";b.textContent="↪ Einloggen / Registrieren";b.style.width="100%";b.style.marginTop="10px";b.onclick=()=>window.AuthUI?.open("login");profile.parentElement.append(b);}
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>{addEntry();new MutationObserver(addEntry).observe(document.body,{childList:true,subtree:true})});else{addEntry();new MutationObserver(addEntry).observe(document.body,{childList:true,subtree:true})}
+})();
