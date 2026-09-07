@@ -112,6 +112,13 @@ Auf Desktop wird die App kompakt mit 90 % Skalierung dargestellt, damit mehr Inh
 - Direkte Links auf einzelne Reiter öffnen die passende Ansicht
 - Desktop-Darstellung mit reduzierter 90-%-Skalierung; Mobile bleibt bei 100 %
 
-## Tagesbuchungen ohne Pagination
+## Tagesbuchungen mit Pagination
 
-Die Tagesliste zeigt alle Buchungen des ausgewählten Tages gleichzeitig. Es gibt keine künstliche Seitenaufteilung; die Suche filtert die vollständige Liste.
+Die Tagesliste zeigt die heutigen Buchungen in übersichtlichen Seiten. Die Suche filtert nur die heutigen Buchungen und setzt die aktuelle Seite zurück; über „Zurück“ und „Weiter“ werden weitere Einträge geladen.
+
+## Authentifizierung und Sitzung
+
+- Profil-Untermenü mit getrennten Aktionen „Einloggen“, „Registrierung“ und „Ausloggen“
+- Nach dem Ausloggen wird die App geschlossen und automatisch das Anmeldefenster geöffnet.
+- Nach erfolgreicher Anmeldung wird die App wieder freigeschaltet und die persönliche Sitzung geladen.
+- Passwörter werden serverseitig nur als Hash in D1 gespeichert.
