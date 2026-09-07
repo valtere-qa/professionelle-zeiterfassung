@@ -111,3 +111,7 @@ Auf Desktop wird die App kompakt mit 90 % Skalierung dargestellt, damit mehr Inh
 - Browser-Zurück und Vorwärts werden unterstützt
 - Direkte Links auf einzelne Reiter öffnen die passende Ansicht
 - Desktop-Darstellung mit reduzierter 90-%-Skalierung; Mobile bleibt bei 100 %
+
+## Tagesbuchungen ohne Pagination
+
+Die Tagesliste zeigt alle Buchungen des ausgewählten Tages gleichzeitig. Es gibt keine künstliche Seitenaufteilung; die Suche filtert die vollständige Liste.
