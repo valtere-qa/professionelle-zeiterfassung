@@ -131,3 +131,11 @@ Die Tagesliste zeigt die heutigen Buchungen in übersichtlichen Seiten. Die Such
 - Kalenderansicht für Tag und Woche mit Monatsnavigation
 - Einträge können erstellt, bearbeitet und gelöscht werden
 - Mobile Ansicht mit touch-freundlichen Kalenderzellen, Agenda und Dialogfeldern
+
+## OneNote-Notizbereiche
+
+- Bereich-Tabs: Alle Bereiche, Arbeit, Privat und Organisation
+- Notizliste mit Suche, Farbfilttern und aktiver Auswahl
+- Editor mit Titel, Inhalt, Farbe, Bereich und Checkliste
+- Checklistenaufgaben können hinzugefügt, abgehakt und einzeln gelöscht werden
+- Bereiche werden lokal und bei aktiver Anmeldung mit D1 synchronisiert
