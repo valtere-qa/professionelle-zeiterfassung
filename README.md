@@ -88,3 +88,14 @@ E-Mail-Bestätigung und SMS sind als Integrationspunkt dokumentiert, aber erst n
 - Änderungen aus anderen Browser-Tabs werden über das Storage-Ereignis erkannt.
 - Erinnerungen laufen separat in einem 30-Sekunden-Intervall.
 - Navigation verwendet kein künstliches Smooth-Scrolling mehr.
+
+## Kompakte Teams-Darstellung
+
+Die Microsoft-Teams-/Fluent-Oberfläche verwendet eine kompakte Dichte:
+
+- kleinere App-Titel und Überschriften
+- kompakte Buttons mit klaren Klickflächen
+- reduzierte Eingabefelder und Auswahlfelder
+- kleinere Kennzahlenkarten und Abstände
+- separate Anpassung für Dialoge, Kalender, Notizen und Mobile
+- Bedienbarkeit und Fokusrahmen bleiben erhalten
