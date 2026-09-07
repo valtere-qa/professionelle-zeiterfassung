@@ -31,9 +31,10 @@
     document.body.append(node); setTimeout(()=>node.remove(),2400);
   };
   const panel = () => $("#dynamic");
-  let currentView="overview", refreshTimer=0, lastDataSignature="";
+  let currentView="overview", refreshTimer=0;
   const dataSignature=()=>[localStorage.getItem(STORE)||"",localStorage.getItem(CALENDAR)||"",localStorage.getItem(NOTES)||""].join("|");
-  const requestRefresh=()=>{if(refreshTimer)return;refreshTimer=setTimeout(()=>{refreshTimer=0;if(currentView==="overview")refreshOverview();else if(currentView)render(currentView)},0)};
+  const refreshNow=()=>{if(currentView==="overview")refreshOverview();else if(currentView)render(currentView)};
+  const requestRefresh=()=>{if(refreshTimer)return;refreshTimer=setTimeout(()=>{refreshTimer=0;refreshNow()},0)};
 
   const refreshOverview=()=>{
     const d=state(), todayEntries=d.entries.filter(e=>e.date===today()), total=todayEntries.reduce((sum,e)=>sum+Number(e.minutes||0),0), all=d.entries.reduce((sum,e)=>sum+Number(e.minutes||0),0);
@@ -221,6 +222,6 @@
     if(!Storage.prototype.__zeiterfassungPatched){const originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){originalSetItem.call(this,key,value);window.dispatchEvent(new CustomEvent("zeiterfassung-storage-changed",{detail:key}));};Storage.prototype.__zeiterfassungPatched=true;}
     window.addEventListener("zeiterfassung-storage-changed",e=>{if([STORE,CALENDAR,NOTES].includes(e.detail))requestRefresh()});window.addEventListener("storage",e=>{if([STORE,CALENDAR,NOTES].includes(e.key))requestRefresh()});
     bindWorkMode();
-    pullRemote();window.addEventListener("zeiterfassung-auth-changed",()=>{pullRemote();requestRefresh()});window.ZeiterfassungRefresh=requestRefresh;lastDataSignature=dataSignature();checkReminders();setInterval(checkReminders,30000);document.addEventListener("click",handleClick,true);$$("body *").forEach(x=>{if(x.childNodes.length===1&&x.textContent.includes("Valt%C3%A8re%20Fansi"))x.textContent="Valtère Fansi"});};
+    pullRemote();window.addEventListener("zeiterfassung-auth-changed",()=>{pullRemote();requestRefresh()});window.ZeiterfassungRefresh=()=>{if(refreshTimer){clearTimeout(refreshTimer);refreshTimer=0}refreshNow()};checkReminders();setInterval(checkReminders,30000);document.addEventListener("click",handleClick,true);$$("body *").forEach(x=>{if(x.childNodes.length===1&&x.textContent.includes("Valt%C3%A8re%20Fansi"))x.textContent="Valtère Fansi"});};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
