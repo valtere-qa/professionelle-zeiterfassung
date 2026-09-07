@@ -122,3 +122,12 @@ Die Tagesliste zeigt die heutigen Buchungen in übersichtlichen Seiten. Die Such
 - Nach dem Ausloggen wird die App geschlossen und automatisch das Anmeldefenster geöffnet.
 - Nach erfolgreicher Anmeldung wird die App wieder freigeschaltet und die persönliche Sitzung geladen.
 - Passwörter werden serverseitig nur als Hash in D1 gespeichert.
+
+## Kalender-Details
+
+- Eintragsarten: Termin, Aufgabe und Geburtstag
+- Persönliche Erinnerung pro Eintrag: Minuten, Stunden, Tage oder Wochen
+- Ganztägige Einträge sowie Beginn, Ende, Ort und Notiz
+- Kalenderansicht für Tag und Woche mit Monatsnavigation
+- Einträge können erstellt, bearbeitet und gelöscht werden
+- Mobile Ansicht mit touch-freundlichen Kalenderzellen, Agenda und Dialogfeldern
