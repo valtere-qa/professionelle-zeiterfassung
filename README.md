@@ -103,3 +103,11 @@ Die Microsoft-Teams-/Fluent-Oberfläche verwendet eine kompakte Dichte:
 ## Reduzierte App-Skalierung
 
 Auf Desktop wird die App kompakt mit 90 % Skalierung dargestellt, damit mehr Inhalte gleichzeitig sichtbar sind. Auf Mobilgeräten bleibt die Skalierung bei 100 %, damit Touch-Ziele und Lesbarkeit erhalten bleiben.
+
+## Navigation und Darstellung
+
+- Clientseitige Routen: #overview, #entries, #week, #stats, #calendar, #notes, #categories, #favorites, #settings und #help
+- Reiter wechseln ohne vollständigen Seitenreload
+- Browser-Zurück und Vorwärts werden unterstützt
+- Direkte Links auf einzelne Reiter öffnen die passende Ansicht
+- Desktop-Darstellung mit reduzierter 90-%-Skalierung; Mobile bleibt bei 100 %
