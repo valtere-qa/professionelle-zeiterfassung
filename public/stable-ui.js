@@ -160,7 +160,7 @@
       $("#saveActiveNote",p).onclick=saveActive;$("#deleteActiveNote",p).onclick=()=>{if(confirm("Notiz löschen?")){const index=notes.findIndex(n=>String(n.id)===String(active.id));if(index>=0){const deleted=notes.splice(index,1)[0];removeRemoteNote(deleted);selectedId=notes[0]?.id||null;save(NOTES,notes);draw();toast("Notiz gelöscht.")}}};
       $("#addActiveTask",p).onclick=()=>{const input=$("#activeTaskText",p);captureDraft();if(input.value.trim()){active.tasks.push({text:input.value.trim(),done:false});persist(active);draw();toast("Aufgabe hinzugefügt.")}};
       $("#activeTaskText",p).onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();$("#addActiveTask",p).click()}};
-      $$("[data-editor-task]",p).forEach(box=>box.onchange=()=>{active.tasks=normalizeTasks(active);active.tasks[Number(box.dataset.editorTask)].done=box.checked;persist(active);draw()});
+      $$("[data-editor-task]",p).forEach(box=>box.onchange=()=>{captureDraft();active.tasks[Number(box.dataset.editorTask)].done=box.checked;persist(active);draw()});
       $$("[data-editor-task-delete]",p).forEach(b=>b.onclick=()=>{captureDraft();active.tasks.splice(Number(b.dataset.editorTaskDelete),1);persist(active);draw();toast("Aufgabe gelöscht.")});
     };
     const createNote=()=>{const note={id:crypto.randomUUID(),title:"Neue Notiz",content:"",tasks:[],color:"blau",section:"Arbeit",created:new Date().toLocaleDateString("de-DE")};notes.unshift(note);selectedId=note.id;save(NOTES,notes);pushNote(note);draw();setTimeout(()=>$("#activeNoteTitle",p)?.select(),0)};
