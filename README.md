@@ -141,8 +141,8 @@ Die Tagesliste zeigt die heutigen Buchungen in übersichtlichen Seiten. Die Such
 - Bereiche werden lokal und bei aktiver Anmeldung mit D1 synchronisiert
 ## Live-Qualitätssicherung
 
-- Aktuell ausgelieferter UI-Stand: `stable-ui.js?v=20260907-23`
-- Hauptnavigation aller zehn Reiter live geprüft.
+- Aktuell ausgelieferter UI-Stand: `stable-ui.js?v=20260907-24`
+- Hauptnavigation aller zehn Reiter live geprüft; Reiterwechsel verändert die Scrollposition nicht.
 - Kalender-Erstellen, sofortige Agenda-Anzeige und Löschen live geprüft.
 - Notiz-Speichern mit Farbe/Bereich sowie Checklisten-Hinzufügen, Abhaken und Löschen live geprüft.
 - Notiz-Entwürfe werden vor Checklistenänderungen übernommen, damit Titel, Inhalt, Farbe und Bereich nicht verloren gehen.
