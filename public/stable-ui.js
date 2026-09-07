@@ -214,7 +214,7 @@
   const routeTo=(name,push)=>{
     const view=Object.prototype.hasOwnProperty.call(ROUTES,name)?name:"overview";
     if(push){const hash="#"+view;if(location.hash!==hash)history.pushState({view},"",hash);}
-    currentView=view;$(".nav button").forEach(button=>{const active=button.dataset.view===view;button.classList.toggle("active",active);if(active)button.setAttribute("aria-current","page");else button.removeAttribute("aria-current")});
+    currentView=view;$$(".nav button").forEach(button=>{const active=button.dataset.view===view;button.classList.toggle("active",active);if(active)button.setAttribute("aria-current","page");else button.removeAttribute("aria-current")});
     const p=panel();if(view==="overview"){if(p)p.hidden=true;refreshOverview();}else render(view);
     window.scrollTo({top:0,left:0,behavior:"auto"});
     document.title="Professionelle Zeiterfassung · "+ROUTES[view];
