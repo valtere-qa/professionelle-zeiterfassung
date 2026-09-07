@@ -171,10 +171,20 @@
     else if(name==="help"){p.innerHTML="<h2>Hilfe · Aide</h2><p>Verwalte deine persönliche Zeiterfassung.</p>"+["Arbeitszeit konfigurieren","Zeit erfassen","Live-Timer verwenden","Organisieren und auswerten","Bearbeiten, suchen und sichern"].map((x,i)=>"<div class='card' style='padding:15px;margin:9px 0'><b>"+(i+1)+" · "+x+"</b><p class='sub'>"+["Datum, Start, Ende, Pause sowie Tages- und Wochensoll festlegen.","Kategorie, Projekt, Leistung, Dauer und Bemerkung erfassen.","Timer starten; beim Stoppen wird die gemessene Zeit übernommen.","Kategorien, Projekte, Favoriten, Kalender, Notizen, CSV und PDF verwenden.","Buchungen bearbeiten, suchen, sichern und wiederherstellen."][i]+"</p></div>").join("");}
     if(name!=="calendar"&&name!=="notes") p.scrollIntoView({block:"start"});
   };
+  const ROUTES={overview:"Übersicht",entries:"Einträge",week:"Woche",stats:"Auswertung",calendar:"Kalender",notes:"Notizen",categories:"Kategorien",favorites:"Favoriten",settings:"Einstellungen",help:"Hilfe"};
+  const routeFromLocation=()=>{const route=String(location.hash||"").replace(/^#/,"").toLowerCase();return Object.prototype.hasOwnProperty.call(ROUTES,route)?route:"overview"};
+  const routeTo=(name,push)=>{
+    const view=Object.prototype.hasOwnProperty.call(ROUTES,name)?name:"overview";
+    if(push){const hash="#"+view;if(location.hash!==hash)history.pushState({view},"",hash);}
+    currentView=view;$(".nav button").forEach(button=>{const active=button.dataset.view===view;button.classList.toggle("active",active);if(active)button.setAttribute("aria-current","page");else button.removeAttribute("aria-current")});
+    const p=panel();if(view==="overview"){if(p)p.hidden=true;refreshOverview();}else render(view);
+    window.scrollTo({top:0,left:0,behavior:"auto"});
+    document.title="Professionelle Zeiterfassung · "+ROUTES[view];
+  };
   let timerStarted=0, timerInterval;
   const handleClick = e => {
     const nav=e.target.closest(".nav button");
-    if(nav){e.preventDefault();e.stopImmediatePropagation();$$(".nav button").forEach(x=>x.classList.toggle("active",x===nav));if(nav.dataset.view==="overview")panel().hidden=true;else render(nav.dataset.view);return;}
+    if(nav){e.preventDefault();e.stopImmediatePropagation();routeTo(nav.dataset.view,true);return;}
     if(e.target.closest("#csv")){e.preventDefault();e.stopImmediatePropagation();exportCsv();return;}
     if(e.target.closest("#pdf")){e.preventDefault();e.stopImmediatePropagation();exportPdf();return;}
     if(e.target.closest("#timer")){e.preventDefault();e.stopImmediatePropagation();const button=$("#timer");if(!timerStarted){timerStarted=Date.now();button.textContent="■ Timer stoppen";timerInterval=setInterval(()=>{const elapsed=Math.floor((Date.now()-timerStarted)/1000);button.textContent="■ "+String(Math.floor(elapsed/3600)).padStart(2,"0")+":"+String(Math.floor(elapsed/60)%60).padStart(2,"0")+":"+String(elapsed%60).padStart(2,"0");},1000);toast("Timer gestartet.");}else{const elapsed=Math.max(1,Math.round((Date.now()-timerStarted)/60000));clearInterval(timerInterval);timerStarted=0;button.textContent="▷ Timer starten";const durationButton=$("#duration");if(durationButton){const span=$("span",durationButton);if(span)span.textContent=format(elapsed)}toast("Gemessene Dauer wurde übernommen.");}return;}
@@ -206,6 +216,6 @@
     if(!Storage.prototype.__zeiterfassungPatched){const originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){originalSetItem.call(this,key,value);window.dispatchEvent(new CustomEvent("zeiterfassung-storage-changed",{detail:key}));};Storage.prototype.__zeiterfassungPatched=true;}
     window.addEventListener("zeiterfassung-storage-changed",e=>{if([STORE,CALENDAR,NOTES].includes(e.detail))requestRefresh()});window.addEventListener("storage",e=>{if([STORE,CALENDAR,NOTES].includes(e.key))requestRefresh()});
     bindWorkMode();
-    pullRemote();window.addEventListener("zeiterfassung-auth-changed",()=>{pullRemote();requestRefresh()});window.ZeiterfassungRefresh=()=>{if(refreshTimer){clearTimeout(refreshTimer);refreshTimer=0}refreshNow()};checkReminders();setInterval(checkReminders,30000);document.addEventListener("click",handleClick,true);$$("body *").forEach(x=>{if(x.childNodes.length===1&&x.textContent.includes("Valt%C3%A8re%20Fansi"))x.textContent="Valtère Fansi"});};
+    pullRemote();window.addEventListener("zeiterfassung-auth-changed",()=>{pullRemote();requestRefresh()});window.ZeiterfassungRefresh=()=>{if(refreshTimer){clearTimeout(refreshTimer);refreshTimer=0}refreshNow()};window.addEventListener("popstate",()=>routeTo(routeFromLocation(),false));window.addEventListener("hashchange",()=>routeTo(routeFromLocation(),false));checkReminders();routeTo(routeFromLocation(),false);setInterval(checkReminders,30000);document.addEventListener("click",handleClick,true);$$("body *").forEach(x=>{if(x.childNodes.length===1&&x.textContent.includes("Valt%C3%A8re%20Fansi"))x.textContent="Valtère Fansi"});};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
