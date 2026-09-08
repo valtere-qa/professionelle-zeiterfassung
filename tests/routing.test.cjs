@@ -246,5 +246,6 @@ test('Calendar reminder controls show the personal per-entry label and remain us
   assert.equal(unit.getAttribute('aria-label'), 'Einheit der Erinnerung');
   assert.deepEqual(Array.from(unit.options).map(option => option.textContent), ['Minute(n)', 'Stunde(n)', 'Tag(e)', 'Woche(n)']);
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
-  assert.match(stable, /\.stable-reminder\{grid-template-columns:minmax\(96px,125px\) minmax\(0,1fr\)/);
+  assert.match(stable, /\.stable-dialog \.field>label\{display:block/);
+  assert.match(stable, /\.stable-reminder\{grid-template-columns:140px minmax\(0,1fr\);gap:12px/);
 });
