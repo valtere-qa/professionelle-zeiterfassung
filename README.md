@@ -63,7 +63,7 @@ Responsive Zeiterfassung für **Valtère Fansi** mit Cloudflare Worker, D1-Daten
 - public/auth-ui.js: Profil-Untermenü und Authentifizierungsdialog
 - public/api.js: API-Client und Session-Verwaltung
 - public/extra.js: Buchungserfassung und Synchronisierung
-- Legacy-Feature-Schichten werden nicht geladen, damit keine doppelten Handler oder widersprüchlichen Menüs entstehen.
+- Die Hauptnavigation wird ausschließlich in `stable-ui.js` verarbeitet. Die alten Routing-Handler in `index.html` und `extra.js` sind entfernt; Buchungsfunktionen aus `extra.js` bleiben erhalten.
 
 ## Cloudflare
 
@@ -110,6 +110,11 @@ Auf Desktop wird die App kompakt mit 90 % Skalierung dargestellt, damit mehr Inh
 - Reiter wechseln ohne vollständigen Seitenreload
 - Browser-Zurück und Vorwärts werden unterstützt
 - Direkte Links auf einzelne Reiter öffnen die passende Ansicht
+- Die Übersicht und der gewählte Reiter belegen denselben Inhaltsbereich; sie sind nie gleichzeitig sichtbar.
+- Neue Ansichten beginnen sofort am Seitenanfang, ohne animiertes Scrollen zu einem Abschnitt unter der Übersicht.
+- Ein erneuter Klick auf den aktiven Reiter erzeugt weder einen zusätzlichen Verlaufseintrag noch einen Neuaufbau des Editors.
+- „Zeit erfassen“ wechselt von jedem Reiter zur Übersicht und fokussiert das Eingabeformular.
+- Auf schmalen Bildschirmen sind alle zehn Reiter über eine horizontal verschiebbare Navigationsleiste erreichbar.
 - Desktop-Darstellung mit reduzierter 90-%-Skalierung; Mobile bleibt bei 100 %
 
 ## Tagesbuchungen mit Pagination
@@ -139,10 +144,23 @@ Die Tagesliste zeigt die heutigen Buchungen in übersichtlichen Seiten. Die Such
 - Editor mit Titel, Inhalt, Farbe, Bereich und Checkliste
 - Checklistenaufgaben können hinzugefügt, abgehakt und einzeln gelöscht werden
 - Bereiche werden lokal und bei aktiver Anmeldung mit D1 synchronisiert
-## Live-Qualitätssicherung
+## Routing-Korrektur und Tests – 8. September 2026
 
-- Aktuell ausgelieferter UI-Stand: `stable-ui.js?v=20260907-24`
-- Hauptnavigation aller zehn Reiter live geprüft; Reiterwechsel verändert die Scrollposition nicht.
-- Kalender-Erstellen, sofortige Agenda-Anzeige und Löschen live geprüft.
-- Notiz-Speichern mit Farbe/Bereich sowie Checklisten-Hinzufügen, Abhaken und Löschen live geprüft.
-- Notiz-Entwürfe werden vor Checklistenänderungen übernommen, damit Titel, Inhalt, Farbe und Bereich nicht verloren gehen.
+Ursache: `#dynamic` wurde unter allen weiterhin sichtbaren Übersichtskarten aufgebaut. Das Entfernen von `scrollIntoView()` allein änderte daran nichts. Zusätzlich existierten drei konkurrierende Navigationsimplementierungen.
+
+Die Übersicht hat jetzt einen eigenen Container `#overviewView`. Ein einziger Router schaltet diesen Container und `#dynamic` gegenseitig um. Ein gebündeltes Daten-Update bleibt auf der aktuellen Route; ausstehende Updates werden beim Ansichtenwechsel berücksichtigt. Der Tag-/Woche-Schalter verwendet jetzt alle Schaltflächen statt einer einzelnen DOM-Referenz.
+
+UI-Kennung dieser Änderung: `stable-ui.js?v=20260907-25` und `extra.js?v=20260907-25`. Die URL der veröffentlichten App ist [Professionelle Zeiterfassung](https://professionelle-zeiterfassung.vafa-qa-engineering.workers.dev/).
+
+Tests lokal ausführen (Node.js 18 oder neuer):
+
+```sh
+npm install
+npm test
+```
+
+`tests/routing.test.cjs` führt die echte HTML-Datei mit allen eingebundenen App-Skripten in jsdom aus. Getestet werden alle zehn Reiter, Direktlinks, URL-Normalisierung, Browser-Verlauf, wiederholte Klicks, Notizentwürfe beim erneuten Öffnen desselben Reiters, „Zeit erfassen“, Daten-Aktualisierung, Tag-/Woche-Umschaltung und die Sichtbarkeit der Ansichten. Netzwerkanfragen sind simuliert; keine produktiven Daten werden verändert.
+
+Ergebnis am 8. September 2026: **26 Tests bestanden, 0 fehlgeschlagen**. Die mobile Navigation wird zusätzlich anhand ihrer CSS-Regeln und mit simulierten Abmessungen geprüft.
+
+Testgrenzen: jsdom prüft DOM und Ereignisse, jedoch keine Pixelpositionen oder reale Touch-Bedienung. Der Live-Browser war während dieser Prüfung nicht erreichbar. Datenbank-, Authentifizierungs-, Export- und Erinnerungsfunktionen wurden mit diesem Routing-Test nicht vollständig abgenommen. Eine ausgelieferte Dateiversion ist kein Ersatz für einen erfolgreichen Live-Klicktest.
