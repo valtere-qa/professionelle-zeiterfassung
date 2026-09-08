@@ -74,7 +74,6 @@
     const date=document.querySelector("#workDate");date?.addEventListener("change",()=>{const label=document.querySelector("#qualityText");if(label)label.textContent="Ausgewählter Arbeitstag: "+date.value;});
     const pdf=document.querySelector("#pdf");if(pdf)pdf.onclick=()=>{const choice=prompt("PDF-Bericht: Heute, Monat oder Alle","Heute");if(choice!==null){document.body.dataset.reportRange=choice;window.print();}};
     const more=document.querySelector("#more");if(more)more.title="Springt zur Buchungserfassung";
-    const profile=document.querySelector(".profile");if(profile&&!document.querySelector("#backupBtn")){const b=document.createElement("button");b.id="backupBtn";b.className="btn";b.textContent="⇩ Backup";b.style.marginTop="10px";b.onclick=backup;profile.parentElement.append(b);}
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",enhance2);else enhance2();
 })();
