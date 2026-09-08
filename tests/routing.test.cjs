@@ -312,11 +312,23 @@ test('Notes page follows the OneNote reference structure when empty', async t =>
   assert.match(a.$('.stable-notes-hero h2').textContent, /Notizbücher/);
   assert.equal(a.$('#stableOneNoteExport').textContent.includes('OneNote exportieren'), true);
   assert.equal(a.$('.stable-note-reference-tab').textContent, 'Alle Notizen');
+  assert.equal(a.window.document.querySelectorAll('[data-note-section]').length, 4);
+  assert.ok(a.$('.stable-note-sections'));
   assert.ok(a.$('.stable-note-reference-search'));
   assert.ok(a.$('.stable-note-reference-category'));
   assert.ok(a.$('.stable-note-reference-theme'));
   assert.ok(a.$('.stable-notes-reference-empty'));
   assert.match(a.$('#dynamic').textContent, /Noch keine Notiz ausgewählt/);
+});
+
+test('Empty checklist task shows a red validation message and focuses the field', async t => {
+  const a = await app(t, '#notes', {
+    [NOTES]: [{ id: 'note-1', title: 'Planung', content: '', tasks: [], color: 'blau', section: 'Arbeit' }]
+  });
+  a.$('#addActiveTask').click();
+  assert.match(a.$('#dynamic').textContent, /Bitte eine Aufgabe eingeben/);
+  assert.equal(a.$('#activeTaskText').classList.contains('stable-invalid'), true);
+  assert.equal(a.window.document.activeElement.id, 'activeTaskText');
 });
 
 test('Stats page renders the professional analytics dashboard', async t => {
