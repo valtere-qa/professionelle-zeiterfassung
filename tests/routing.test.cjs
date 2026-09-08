@@ -308,3 +308,19 @@ test('Notes page follows the OneNote reference structure when empty', async t =>
   assert.ok(a.$('.stable-notes-reference-empty'));
   assert.match(a.$('#dynamic').textContent, /Noch keine Notiz ausgewählt/);
 });
+
+test('Overview mini-calendar day click opens that day in entries', async t => {
+  const a = await app(t, '#overview', {
+    [STORE]: { entries: [
+      { date: '2026-08-31', minutes: 60, category: 'Testing', project: 'Intern', description: 'Kalendertag' },
+      { date: '2026-09-08', minutes: 30, category: 'Meeting', project: 'Intern', description: 'Heute' }
+    ] }
+  });
+  const day = a.window.document.querySelector('#days button:not(.muted)');
+  assert.ok(day, 'Calendar day button exists');
+  day.click();
+  await tick();
+  assertView(a, 'entries');
+  assert.match(a.$('#dynamic').textContent, /Kalendertag/);
+  assert.doesNotMatch(a.$('#dynamic').textContent, /2026-09-08/);
+});

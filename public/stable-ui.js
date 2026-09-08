@@ -254,6 +254,7 @@
   const handleClick = e => {
     const nav=e.target.closest(".nav button");
     if(nav){e.preventDefault();e.stopImmediatePropagation();routeTo(nav.dataset.view,true);return;}
+    if(e.target.closest("#days button:not(.muted)")){setTimeout(()=>{const date=$("#workDate")?.value;if(date){localStorage.setItem(SELECTED_ENTRY_DATE,date);routeTo("entries",true);}},0);return;}
     const page=e.target.closest("[data-entry-page]");
     if(page){e.preventDefault();e.stopImmediatePropagation();entryPage=Math.max(1,entryPage+Number(page.dataset.entryPage||0));refreshOverview();return;}
     if(e.target.closest("#csv")){e.preventDefault();e.stopImmediatePropagation();exportCsv();return;}
