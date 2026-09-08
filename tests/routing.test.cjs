@@ -395,6 +395,26 @@ test('Entry edit and delete actions use the matching controls and validate requi
   assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).entries.length, 0);
 });
 
+test('Add actions open styled forms and persist named items without native prompts', async t => {
+  const a = await app(t, '#favorites');
+  a.$('#stableAdd').click();
+  assert.ok(a.$('.stable-dialog'));
+  assert.equal(a.$('#stableNamedValue').getAttribute('autocomplete'), 'off');
+  a.$('.stable-save').click();
+  assert.equal(a.$('.stable-form-error').hidden, false);
+  assert.equal(a.window.document.activeElement, a.$('#stableNamedValue'));
+  a.$('#stableNamedValue').value = 'Mein Favorit';
+  a.$('.stable-save').click();
+  assert.match(a.$('#dynamic').textContent, /Mein Favorit/);
+
+  a.click('overview');
+  a.$('.plus[data-add="category"]').click();
+  assert.ok(a.$('.stable-dialog'));
+  a.$('#stableNamedValue').value = 'Neue Kategorie';
+  a.$('.stable-save').click();
+  assert.ok([...a.$('#category').options].some(option => option.value === 'Neue Kategorie'));
+});
+
 test('Adding an entry shows a red required-field error and focuses the missing field', async t => {
   const a = await app(t, '#overview');
   a.$('#category').innerHTML = '';

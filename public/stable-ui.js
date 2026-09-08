@@ -34,6 +34,15 @@
     document.body.append(node); setTimeout(()=>node.remove(),2400);
   };
   const confirmDelete = (title, details, onConfirm) => showModal(title,"<p>"+details+"</p><p class='stable-delete-warning'>Dieser Vorgang kann nicht rückgängig gemacht werden.</p>","Löschen",root=>{onConfirm();root.remove()});
+  const addNamedItem = (kind, onDone) => {
+    const labels={favorites:["Favorit hinzufügen","Name des Favoriten *"],category:["Kategorie hinzufügen","Name der Kategorie *"],project:["Projekt hinzufügen","Name des Projekts *"]};
+    const [title,label]=labels[kind]||labels.category;
+    const root=showModal(title,"<div class='field'><label for='stableNamedValue'>"+label+"</label><input id='stableNamedValue' autocomplete='off' placeholder='Namen eingeben'></div>","Hinzufügen",modal=>{
+      if(!showValidation(modal,["#stableNamedValue"],"Bitte gib einen Namen ein."))return;
+      onDone($("#stableNamedValue",modal).value.trim()); modal.remove();
+    });
+    setTimeout(()=>$("#stableNamedValue",root)?.focus(),0);
+  };
   const panel = () => $("#dynamic");
   let currentView="overview", mountedView=null, refreshTimer=0, entryPage=1;const ENTRY_PAGE_SIZE=10;
   const dataSignature=()=>[localStorage.getItem(STORE)||"",localStorage.getItem(CALENDAR)||"",localStorage.getItem(NOTES)||""].join("|");
@@ -228,7 +237,7 @@
     else if(name==="stats")renderStats(p,d);
     else if(name==="calendar") renderCalendar(p);
     else if(name==="notes") renderNotes(p);
-    else if(name==="categories"||name==="favorites"){const key=name==="categories"?"categories":"favorites", arr=d[key]||[], values=arr.map(x=>typeof x==="string"?x:x.label||x.name);p.innerHTML="<h2>"+(key==="categories"?"Kategorien":"Favoriten")+"</h2><p>Verwalten und direkt verwenden.</p><div class='stable-pills'>"+(values.map((x,i)=>"<span>"+escapeHtml(x)+" <button class='delete' data-remove='"+i+"'>×</button></span>").join("")||"<p class='sub'>Noch keine Einträge.</p>")+"</div><button class='btn primary' id='stableAdd'>＋ Hinzufügen</button>";$("#stableAdd",p).onclick=()=>{const value=prompt("Name eingeben:");if(value?.trim()){const n=state();n[key].push(key==="favorites"?{label:value.trim(),duration_minutes:0}:value.trim());save(STORE,n);render(name)}};$$("[data-remove]",p).forEach(b=>b.onclick=()=>{const n=state();n[key].splice(Number(b.dataset.remove),1);save(STORE,n);render(name)})}
+    else if(name==="categories"||name==="favorites"){const key=name==="categories"?"categories":"favorites", arr=d[key]||[], values=arr.map(x=>typeof x==="string"?x:x.label||x.name);p.innerHTML="<h2>"+(key==="categories"?"Kategorien":"Favoriten")+"</h2><p>Verwalten und direkt verwenden.</p><div class='stable-pills'>"+(values.map((x,i)=>"<span>"+escapeHtml(x)+" <button class='delete' data-remove='"+i+"'>×</button></span>").join("")||"<p class='sub'>Noch keine Einträge.</p>")+"</div><button class='btn primary' id='stableAdd'>＋ Hinzufügen</button>";$("#stableAdd",p).onclick=()=>{addNamedItem(key==="favorites"?"favorites":"category",value=>{const n=state();n[key].push(key==="favorites"?{label:value,duration_minutes:0}:value);save(STORE,n);render(name)})};$$("[data-remove]",p).forEach(b=>b.onclick=()=>{const n=state();n[key].splice(Number(b.dataset.remove),1);save(STORE,n);render(name)})}
     else if(name==="settings"){const days=["So","Mo","Di","Mi","Do","Fr","Sa"], targets=d.weekdayTargets||{};p.innerHTML="<h2>Einstellungen & Arbeitsplanung</h2><p>Sollzeiten, Abwesenheiten und Projektbudgets konfigurieren.</p><div class='card stable-settings'><h3>Individuelles Soll je Wochentag</h3><div class='stable-days'>"+days.map(x=>"<div class='field'><label>"+x+" (Std.)</label><input class='stable-day-input' data-day='"+x+"' type='number' min='0' value='"+(targets[x]??(x==="So"||x==="Sa"?0:8))+"'></div>").join("")+"</div></div><div class='card stable-settings'><h3>Abwesenheit</h3><select id='stableAbs'><option>Arbeitstag</option><option>Ferien</option><option>Krankheit</option><option>Feiertag</option></select><h3>Projektbudgets & Status</h3>"+d.projects.map((x,i)=>"<div class='stable-project-row'><input class='stable-project-name' data-project='"+i+"' value='"+escapeHtml(typeof x==="string"?x:x.name)+"'><input class='stable-project-budget' data-project-budget='"+i+"' type='number' min='0' placeholder='Budget Std.' value='"+Number(x.budget_hours||0)+"'><select class='stable-project-status' data-project-status='"+i+"'><option value='active'>Aktiv</option><option value='archived'>Archiviert</option></select></div>").join("")+"</div>";$$(".stable-day-input",p).forEach(x=>x.onchange=()=>{const n=state();n.weekdayTargets=n.weekdayTargets||{};n.weekdayTargets[x.dataset.day]=Number(x.value);save(STORE,n)});$("#stableAbs",p).onchange=e=>{const n=state();n.absence=e.target.value;save(STORE,n)};$$("[data-project]",p).forEach(x=>x.onchange=()=>{const n=state(),i=Number(x.dataset.project),old=n.projects[i];n.projects[i]=typeof old==="string"?{name:x.value,budget_hours:0,status:"active"}:old;n.projects[i].name=x.value;save(STORE,n)});}
     else if(name==="help"){p.innerHTML="<h2>Hilfe · Aide</h2><p>Verwalte deine persönliche Zeiterfassung.</p>"+["Arbeitszeit konfigurieren","Zeit erfassen","Live-Timer verwenden","Organisieren und auswerten","Bearbeiten, suchen und sichern"].map((x,i)=>"<div class='card' style='padding:15px;margin:9px 0'><b>"+(i+1)+" · "+x+"</b><p class='sub'>"+["Datum, Start, Ende, Pause sowie Tages- und Wochensoll festlegen.","Kategorie, Projekt, Leistung, Dauer und Bemerkung erfassen.","Timer starten; beim Stoppen wird die gemessene Zeit übernommen.","Kategorien, Projekte, Favoriten, Kalender, Notizen, CSV und PDF verwenden.","Buchungen bearbeiten, suchen, sichern und wiederherstellen."][i]+"</p></div>").join("");}
   };
@@ -274,6 +283,20 @@
   const handleClick = e => {
     const entryDelete=e.target.closest(".stable-entry [data-delete]");
     if(entryDelete){e.preventDefault();e.stopImmediatePropagation();const d=state(),index=Number(entryDelete.dataset.delete),item=d.entries[index];if(item)confirmDelete("Buchung löschen",escapeHtml(item.category||"Buchung")+" · "+escapeHtml(item.project||""),()=>{d.entries.splice(index,1);save(STORE,d);render("entries");toast("Buchung gelöscht.")});return;}
+    const namedAdd=e.target.closest("#stableAdd");
+    if(namedAdd){
+      e.preventDefault();e.stopImmediatePropagation();
+      const view=currentView, kind=view==="favorites"?"favorites":"category";
+      addNamedItem(kind,value=>{const n=state();n[kind].push(kind==="favorites"?{label:value,duration_minutes:0}:value);save(STORE,n);render(view)});
+      return;
+    }
+    const catalogAdd=e.target.closest(".plus[data-add]");
+    if(catalogAdd){
+      e.preventDefault();e.stopImmediatePropagation();
+      const kind=catalogAdd.dataset.add==="category"?"category":"project", key=kind==="category"?"categories":"projects";
+      addNamedItem(kind,value=>{const n=state();n[key]=n[key]||[];n[key].push(value);save(STORE,n);const select=$("#"+catalogAdd.dataset.add);if(select){const option=document.createElement("option");option.value=value;option.textContent=value;select.append(option);select.value=value}refreshOverview()});
+      return;
+    }
     const nav=e.target.closest(".nav button");
     if(nav){e.preventDefault();e.stopImmediatePropagation();routeTo(nav.dataset.view,true);return;}
     if(e.target.closest("#days button:not(.muted)")){setTimeout(()=>{const date=$("#workDate")?.value;if(date){localStorage.setItem(SELECTED_ENTRY_DATE,date);routeTo("entries",true);}},0);return;}
