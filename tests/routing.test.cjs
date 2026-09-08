@@ -372,6 +372,20 @@ test('Profile submenu shows only valid authentication actions when signed out', 
   assert.ok(a.$('#authPassword'));
 });
 
+test('Logout closes the profile menu and opens the login form immediately', async t => {
+  const a = await app(t, '#overview');
+  a.window.localStorage.setItem('professionelle-zeiterfassung.session', 'test-session');
+  a.$('.profile').click();
+  await tick();
+  await a.window.AuthUI.logout();
+  assert.equal(a.$('.auth-menu'), null);
+  assert.ok(a.$('.auth-overlay'));
+  assert.ok(a.$('#authEmail'));
+  assert.ok(a.$('#authPassword'));
+  assert.equal(a.$('.shell').classList.contains('auth-locked'), true);
+  assert.equal(a.window.localStorage.getItem('professionelle-zeiterfassung.session'), null);
+});
+
 test('Overview mini-calendar day click opens that day in entries', async t => {
   const a = await app(t, '#overview', {
     [STORE]: { entries: [
