@@ -332,6 +332,15 @@ test('Empty checklist task shows a red validation message and focuses the field'
   assert.equal(a.window.document.activeElement.id, 'activeTaskText');
 });
 
+test('Help provides German and French documentation for the app functions', async t => {
+  const a = await app(t, '#help');
+  assert.equal(a.window.document.querySelectorAll('.stable-help-card').length, 10);
+  assert.match(a.$('#dynamic').textContent, /Timer/);
+  a.$('[data-help-lang="fr"]').click();
+  assert.match(a.$('#dynamic').textContent, /Saisies/);
+  assert.match(a.$('#dynamic').textContent, /Calendrier/);
+});
+
 test('Stats page renders the professional analytics dashboard', async t => {
   const a = await app(t, '#stats', {
     [STORE]: { entries: [
@@ -459,6 +468,8 @@ test('Daily bookings render a duplicate action per row and persist the copy', as
   });
   const duplicate = a.$('#entryList [data-entry-duplicate]');
   assert.ok(duplicate, 'daily booking row has a duplicate action');
+  assert.ok(a.$('#entryList [data-entry-edit]'), 'daily booking row has an edit action');
+  assert.ok(a.$('#entryList [data-entry-delete]'), 'daily booking row has a delete action');
   duplicate.click();
   assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).entries.length, 2);
   assert.equal(a.window.document.querySelectorAll('#entryList .entry').length, 2);
