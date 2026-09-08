@@ -14,8 +14,10 @@
   const save = (key, value) => localStorage.setItem(key, JSON.stringify(value));
   const api=()=>window.ZeiterfassungAPI;
   const pullRemote=async()=>{if(!api()?.hasSession?.())return;try{const remote=await api().bootstrap();if(remote.calendar_events?.length){save(CALENDAR,remote.calendar_events.map(x=>({id:x.id,title:x.title,type:x.event_type,date:x.event_date,allDay:Boolean(x.all_day),start:x.start_time||"",end:x.end_time||"",place:x.place||"",reminder:Number(x.reminder_minutes||0),note:x.note||""})));}if(remote.notes?.length){save(NOTES,remote.notes.map(x=>({id:x.id,title:x.title,content:x.content,color:x.color,section:x.section||"Arbeit",tasks:JSON.parse(x.checklist_json||"[]"),created:x.created_at})));}}catch(error){console.warn("Remote-Daten konnten nicht geladen werden.",error);}};
-  const pushCalendar=async item=>{if(!api()?.hasSession?.())return;try{const remote=await api().create("calendar",{event_type:item.type||"Termin",title:item.title,event_date:item.date,all_day:item.allDay,start_time:item.start,end_time:item.end,place:item.place,reminder_minutes:item.reminder,note:item.note});if(remote?.id){item.id=remote.id;save(CALENDAR,read(CALENDAR,[]));}}catch(error){toast("Kalender lokal gespeichert; D1-Synchronisierung fehlgeschlagen.");}};
-  const pushNote=async note=>{if(!api()?.hasSession?.())return;try{const remote=await api().create("notes",{title:note.title,content:note.content,checklist_json:JSON.stringify(note.tasks||[]),color:note.color,section:note.section||"Arbeit"});if(remote?.id){note.id=remote.id;save(NOTES,read(NOTES,[]));}}catch(error){toast("Notiz lokal gespeichert; D1-Synchronisierung fehlgeschlagen.");}};
+  const calendarPayload=item=>({event_type:item.type||"Termin",title:item.title,event_date:item.date,all_day:Boolean(item.allDay),start_time:item.start||null,end_time:item.end||null,place:item.place||null,reminder_minutes:Number(item.reminder||0),note:item.note||null});
+  const pushCalendar=async item=>{if(!api()?.hasSession?.())return;try{const remote=await api().create("calendar",calendarPayload(item));if(remote?.id){item.id=remote.id;save(CALENDAR,read(CALENDAR,[]));}}catch(error){console.warn("Kalender lokal gespeichert; D1-Synchronisierung ausstehend.",error);}};
+  const updateCalendar=async item=>{if(!api()?.hasSession?.()||!item?.id)return;try{const remote=await api().update("calendar",item.id,calendarPayload(item));if(remote?.id)save(CALENDAR,read(CALENDAR,[]));}catch(error){console.warn("Kalender lokal aktualisiert; D1-Synchronisierung ausstehend.",error);}};
+  const removeCalendar=async item=>{if(!api()?.hasSession?.()||!item?.id)return;try{await api().remove("calendar",item.id);}catch(error){console.warn("Kalender lokal gelöscht; D1-Löschung ausstehend.",error);}};
   const today = () => new Date().toISOString().slice(0,10);
   const escapeHtml = value => String(value ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const minutes = value => {
@@ -31,6 +33,7 @@
     Object.assign(node.style,{position:"fixed",right:"18px",bottom:"85px",zIndex:1200,background:"#123263",color:"#fff",padding:"12px 16px",borderRadius:"10px",boxShadow:"0 8px 22px #12326355"});
     document.body.append(node); setTimeout(()=>node.remove(),2400);
   };
+  const confirmDelete = (title, details, onConfirm) => showModal(title,"<p>"+details+"</p><p class='stable-delete-warning'>Dieser Vorgang kann nicht rückgängig gemacht werden.</p>","Löschen",root=>{onConfirm();root.remove()});
   const panel = () => $("#dynamic");
   let currentView="overview", mountedView=null, refreshTimer=0, entryPage=1;const ENTRY_PAGE_SIZE=10;
   const dataSignature=()=>[localStorage.getItem(STORE)||"",localStorage.getItem(CALENDAR)||"",localStorage.getItem(NOTES)||""].join("|");
@@ -54,7 +57,7 @@
       list.className=rows.length?"":"empty";
       list.innerHTML=rows.length?rows.map(e=>"<div class='entry'><div class='entry-icon'>◷</div><div><b>"+escapeHtml(e.category)+" · "+escapeHtml(e.project)+"</b><small>"+escapeHtml(e.description||"Keine Beschreibung")+(e.notes?" · "+escapeHtml(e.notes):"")+"</small></div><div class='time'>"+format(e.minutes)+"<small>"+escapeHtml(e.time||"")+"</small></div><div class='entry-actions'><button class='delete' data-entry-edit='"+e._i+"' aria-label='Buchung bearbeiten' title='Buchung bearbeiten'>✎</button><button class='delete' data-entry-delete='"+e._i+"' aria-label='Buchung löschen' title='Buchung löschen'>×</button></div></div>").join(""):"<div class='clock'>◷</div><b>Noch keine Zeit gebucht</b><p>Erfasse oben deine erste Leistung.</p>";
       $$('[data-entry-edit]',list).forEach(button=>button.onclick=()=>editEntry(Number(button.dataset.entryEdit),refreshOverview));
-      $$('[data-entry-delete]',list).forEach(button=>button.onclick=()=>{if(confirm("Buchung löschen?")){d.entries.splice(Number(button.dataset.entryDelete),1);save(STORE,d);refreshOverview();toast("Buchung gelöscht.")}});
+      $$('[data-entry-delete]',list).forEach(button=>button.onclick=()=>{const item=d.entries[Number(button.dataset.entryDelete)];if(item)confirmDelete("Buchung löschen",escapeHtml(item.category||"Buchung")+" · "+escapeHtml(item.project||""),()=>{d.entries.splice(Number(button.dataset.entryDelete),1);save(STORE,d);refreshOverview();toast("Buchung gelöscht.")})});
       const pagination=$("#entryPagination");
       if(pagination){
         const hasPages=filteredRows.length>ENTRY_PAGE_SIZE;
@@ -122,7 +125,7 @@
       $$("[data-date]",p).forEach(b=>b.onclick=()=>{cal.selected=b.dataset.date;localStorage.setItem(SELECTED_ENTRY_DATE,cal.selected);draw();routeTo("entries",true)});
       $("#stableEmptyNew",p)?.addEventListener("click",()=>$("#newStableCal",p).click());
       $$("[data-event-edit]",p).forEach(b=>b.onclick=()=>{const item=events.find(x=>String(x.id)===String(b.dataset.eventEdit));if(item&&openEditor)openEditor(item)});
-      $$("[data-event-delete]",p).forEach(b=>b.onclick=()=>{const i=events.findIndex(x=>String(x.id)===String(b.dataset.eventDelete));if(i>=0){events.splice(i,1);save(CALENDAR,events);draw();toast("Kalendereintrag gelöscht.")}});
+      $$('[data-event-delete]',p).forEach(b=>b.onclick=()=>{const item=events.find(x=>String(x.id)===String(b.dataset.eventDelete));if(item)confirmDelete("Kalendereintrag löschen",escapeHtml(item.title||"Kalendereintrag"),()=>{const i=events.indexOf(item);if(i>=0){events.splice(i,1);save(CALENDAR,events);removeCalendar(item);draw();toast("Kalendereintrag gelöscht.")}})});
     };
     $("#calPrev",p).onclick=()=>{cal.month.setMonth(cal.month.getMonth()-1);draw()}; $("#calNext",p).onclick=()=>{cal.month.setMonth(cal.month.getMonth()+1);draw()};
     $("#calToday",p).onclick=()=>{cal.selected=today();cal.month=new Date(now.getFullYear(),now.getMonth(),1);draw()};
@@ -138,7 +141,7 @@
         if(!showValidation(root,["#scTitle","#scDate"],"Titel und Datum sind Pflichtfelder."))return;
         const type=$("#scType",root).value, unit=$("#scRemUnit",root).value, value=Math.max(0,Math.round(Number($("#scRemNum",root).value||0))), allDay=$("#scAll",root).checked;
         const data={title,type,date,start:$("#scStart",root).value,end:$("#scEnd",root).value,allDay,place:$("#scPlace",root).value.trim(),reminderValue:value,reminderUnit:unit,reminder:value*reminderUnits[unit].factor,note:$("#scNote",root).value.trim()};
-        if(existing){Object.assign(existing,data);save(CALENDAR,events)}else{const created=Object.assign({id:crypto.randomUUID()},data);events.push(created);save(CALENDAR,events);pushCalendar(created)}
+        if(existing){Object.assign(existing,data);save(CALENDAR,events);updateCalendar(existing)}else{const created=Object.assign({id:crypto.randomUUID()},data);events.push(created);save(CALENDAR,events);pushCalendar(created)}
         root.remove();cal.selected=date;cal.month=new Date(date+"T12:00:00");cal.month.setDate(1);draw();toast(existing?"Kalendereintrag aktualisiert.":"Kalendereintrag gespeichert.");
       });
       const allDayBox=$("#scAll"), startInput=$("#scStart"), endInput=$("#scEnd"), toggleTimes=()=>{startInput.disabled=endInput.disabled=allDayBox.checked};
@@ -173,7 +176,7 @@
       if(!active)return;
       const captureDraft=()=>{active.title=$("#activeNoteTitle",p).value.trim()||"Ohne Titel";active.content=$("#activeNoteContent",p).value;active.color=$("#activeNoteColor",p).value;active.section=$("#activeNoteSection",p).value;active.tasks=normalizeTasks(active)};
       const saveActive=()=>{if(!showValidation(p,["#activeNoteTitle"],"Der Notiztitel ist ein Pflichtfeld."))return;captureDraft();persist(active);draw();toast("Notiz gespeichert.")};
-      $("#saveActiveNote",p).onclick=saveActive;$("#deleteActiveNote",p).onclick=()=>{if(confirm("Notiz löschen?")){const index=notes.findIndex(n=>String(n.id)===String(active.id));if(index>=0){const deleted=notes.splice(index,1)[0];removeRemoteNote(deleted);selectedId=notes[0]?.id||null;save(NOTES,notes);draw();toast("Notiz gelöscht.")}}};
+      $("#saveActiveNote",p).onclick=saveActive;$("#deleteActiveNote",p).onclick=()=>confirmDelete("Notiz löschen",escapeHtml(active.title||"Ohne Titel"),()=>{const index=notes.findIndex(n=>String(n.id)===String(active.id));if(index>=0){const deleted=notes.splice(index,1)[0];removeRemoteNote(deleted);selectedId=notes[0]?.id||null;save(NOTES,notes);draw();toast("Notiz gelöscht.")}});
       $("#addActiveTask",p).onclick=()=>{const input=$("#activeTaskText",p);captureDraft();if(input.value.trim()){active.tasks.push({text:input.value.trim(),done:false});persist(active);draw();toast("Aufgabe hinzugefügt.")}};
       $("#activeTaskText",p).onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();$("#addActiveTask",p).click()}};
       $$("[data-editor-task]",p).forEach(box=>box.onchange=()=>{captureDraft();active.tasks[Number(box.dataset.editorTask)].done=box.checked;persist(active);draw()});
@@ -269,6 +272,8 @@
   };
   let timerStarted=0, timerInterval;
   const handleClick = e => {
+    const entryDelete=e.target.closest(".stable-entry [data-delete]");
+    if(entryDelete){e.preventDefault();e.stopImmediatePropagation();const d=state(),index=Number(entryDelete.dataset.delete),item=d.entries[index];if(item)confirmDelete("Buchung löschen",escapeHtml(item.category||"Buchung")+" · "+escapeHtml(item.project||""),()=>{d.entries.splice(index,1);save(STORE,d);render("entries");toast("Buchung gelöscht.")});return;}
     const nav=e.target.closest(".nav button");
     if(nav){e.preventDefault();e.stopImmediatePropagation();routeTo(nav.dataset.view,true);return;}
     if(e.target.closest("#days button:not(.muted)")){setTimeout(()=>{const date=$("#workDate")?.value;if(date){localStorage.setItem(SELECTED_ENTRY_DATE,date);routeTo("entries",true);}},0);return;}

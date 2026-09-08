@@ -136,6 +136,7 @@ Die Tagesliste zeigt die heutigen Buchungen in übersichtlichen Seiten. Die Such
 - Ganztägige Einträge sowie Beginn, Ende, Ort und Notiz
 - Kalenderansicht für Tag und Woche mit Monatsnavigation
 - Einträge können erstellt, bearbeitet und gelöscht werden
+- Löschen öffnet eine Bestätigungsmaske mit Angaben zum betroffenen Eintrag; Kalenderdaten werden dabei auch aus D1 gelöscht
 - Mobile Ansicht mit touch-freundlichen Kalenderzellen, Agenda und Dialogfeldern
 
 ## OneNote-Notizbereiche
@@ -145,13 +146,14 @@ Die Tagesliste zeigt die heutigen Buchungen in übersichtlichen Seiten. Die Such
 - Editor mit Titel, Inhalt, Farbe, Bereich und Checkliste
 - Checklistenaufgaben können hinzugefügt, abgehakt und einzeln gelöscht werden
 - Bereiche werden lokal und bei aktiver Anmeldung mit D1 synchronisiert
+- Kalendertermine werden bei Erstellung, Bearbeitung und Löschung mit D1 synchronisiert; lokale Speicherung bleibt bei vorübergehender Nichtverfügbarkeit erhalten
 ## Routing-Korrektur und Tests – 8. September 2026
 
 Ursache: `#dynamic` wurde unter allen weiterhin sichtbaren Übersichtskarten aufgebaut. Das Entfernen von `scrollIntoView()` allein änderte daran nichts. Zusätzlich existierten drei konkurrierende Navigationsimplementierungen.
 
 Die Übersicht hat jetzt einen eigenen Container `#overviewView`. Ein einziger Router schaltet diesen Container und `#dynamic` gegenseitig um. Ein gebündeltes Daten-Update bleibt auf der aktuellen Route; ausstehende Updates werden beim Ansichtenwechsel berücksichtigt. Der Tag-/Woche-Schalter verwendet jetzt alle Schaltflächen statt einer einzelnen DOM-Referenz.
 
-UI-Kennung dieser Änderung: `stable-ui.js?v=20260908-39`, `auth-ui.js?v=20260908-13`, `extra.js?v=20260908-28` und `apple-icons.js?v=20260908-1`. Die URL der veröffentlichten App ist [Professionelle Zeiterfassung](https://professionelle-zeiterfassung.vafa-qa-engineering.workers.dev/).
+UI-Kennung dieser Änderung: `stable-ui.js?v=20260908-40`, `auth-ui.js?v=20260908-13`, `extra.js?v=20260908-28` und `apple-icons.js?v=20260908-1`. Die URL der veröffentlichten App ist [Professionelle Zeiterfassung](https://professionelle-zeiterfassung.vafa-qa-engineering.workers.dev/).
 
 Tests lokal ausführen (Node.js 18 oder neuer):
 

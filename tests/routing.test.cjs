@@ -390,6 +390,8 @@ test('Entry edit and delete actions use the matching controls and validate requi
   const remove = a.$('.stable-entry [data-delete]');
   assert.ok(remove, 'a delete action is rendered for the entry');
   remove.click();
+  assert.ok(a.$('.stable-dialog'), 'delete opens a confirmation form');
+  a.$('.stable-save').click();
   assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).entries.length, 0);
 });
 
