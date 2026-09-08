@@ -391,6 +391,7 @@ test('Entry edit and delete actions use the matching controls and validate requi
   assert.ok(remove, 'a delete action is rendered for the entry');
   remove.click();
   assert.ok(a.$('.stable-dialog'), 'delete opens a confirmation form');
+  assert.equal(a.$('.stable-dialog').textContent.includes('Dieser Vorgang kann nicht rückgängig gemacht werden.'), true);
   a.$('.stable-save').click();
   assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).entries.length, 0);
 });
