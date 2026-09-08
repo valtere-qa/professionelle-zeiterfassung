@@ -161,7 +161,7 @@ npm test
 
 `tests/routing.test.cjs` führt die echte HTML-Datei mit allen eingebundenen App-Skripten in jsdom aus. Getestet werden alle zehn Reiter, Direktlinks, URL-Normalisierung, Browser-Verlauf, wiederholte Klicks, Notizentwürfe beim erneuten Öffnen desselben Reiters, „Zeit erfassen“, Daten-Aktualisierung, Tag-/Woche-Umschaltung und die Sichtbarkeit der Ansichten. Netzwerkanfragen sind simuliert; keine produktiven Daten werden verändert.
 
-Ergebnis am 8. September 2026: **29 Tests bestanden, 0 fehlgeschlagen**. Die mobile Navigation wird zusätzlich anhand ihrer CSS-Regeln und mit simulierten Abmessungen geprüft.
+Ergebnis am 8. September 2026: **30 Tests bestanden, 0 fehlgeschlagen**. Die mobile Navigation wird zusätzlich anhand ihrer CSS-Regeln und mit simulierten Abmessungen geprüft.
 
 Zusätzliche Live-Prüfung am 8. September 2026: Alle zehn Reiter wurden in der veröffentlichten Cloudflare-App angeklickt. Jeweils nur die ausgewählte Ansicht war sichtbar, und der URL-Hash stimmte überein. Browser-Zurück/-Vorwärts, „Zeit erfassen“ mit Fokus auf dem Leistungsfeld sowie der Wechsel aus einer gescrollten Übersicht zum Seitenanfang wurden ebenfalls erfolgreich geprüft. Die ausgelieferte HTML-Datei entspricht dem korrigierten Stand `bc972e0`.
 
@@ -170,5 +170,7 @@ Das Kalenderformular stellt alle Felder einheitlich dar: gut lesbare Labels, 44 
 Die Kalenderübersicht verwendet eine kompakte Dichte: kleinere Tagesfelder, weniger Innenabstand und eine geringere Mindesthöhe für Monatsansicht und Agenda. Die Kalendernavigation und die Touch-Klickflächen bleiben erhalten.
 
 Die Kalenderseite folgt der Referenzaufteilung: schmalerer Monatskalender links, breitere Agenda rechts und ein eigener Hinweisblock für Browser-/Smartphone-Benachrichtigungen. Auf kleineren Bildschirmen wechselt das Layout automatisch in eine einspaltige Darstellung.
+
+Die Übersicht ist als kompakte Microsoft-Teams-inspirierte Arbeitsoberfläche gestaltet: ruhiger Seitenhintergrund, klar getrennte Kopfaktionen, Kennzahlenleiste, Arbeitsrahmen und Tagesabschluss. Die Kopfzeile normalisiert außerdem URL-kodierte Namen wie Valt%C3%A8re%20Fansi direkt beim Laden.
 
 Testgrenzen: jsdom prüft DOM und Ereignisse, jedoch keine Pixelpositionen oder reale Touch-Bedienung. Die Live-Prüfung erfolgte im Desktop-Browser; reale mobile Touch-Geräte wurden nicht geprüft. Datenbank-, Authentifizierungs-, Export- und Erinnerungsfunktionen wurden mit diesem Routing-Test nicht vollständig abgenommen.

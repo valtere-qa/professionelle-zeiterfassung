@@ -266,3 +266,18 @@ test('Calendar layout matches the compact reference with a notification block an
   assert.match(stable, /\.stable-cal-layout\{grid-template-columns:minmax\(0,\.92fr\) minmax\(0,1\.08fr\)\}/);
   assert.match(stable, /\.stable-day\{min-height:76px;padding:10px\}/);
 });
+
+test('Overview presents the compact professional dashboard with a decoded user name', async t => {
+  const a = await app(t, '#overview');
+  assert.equal(a.$('#overviewView').hidden, false);
+  assert.equal(a.$('.metrics').querySelectorAll('.metric').length, 5);
+  assert.equal(a.$('.work').hidden, false);
+  assert.equal(a.$('.quality').hidden, false);
+  assert.equal(a.$('.top h1').textContent.includes('Valtère'), true);
+  assert.equal(a.$('.top h1').textContent.includes('%C3%A8'), false);
+  assert.equal(a.$('#timer').textContent.includes('Timer starten'), true);
+  assert.equal(a.$('#csv').textContent.includes('CSV'), true);
+  assert.equal(a.$('#pdf').textContent.includes('PDF'), true);
+  const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
+  assert.match(stable, /#overviewView>\.work\{|\.metrics\{gap:10px;margin:0 0 20px/);
+});
