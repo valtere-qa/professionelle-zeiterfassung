@@ -233,3 +233,18 @@ test('Route refresh does not create navigation events or history entries', async
   assert.equal(a.window.history.length, length);
   assert.equal(a.scrolls.length, scrolls);
 });
+
+test('Calendar reminder controls show the personal per-entry label and remain usable', async t => {
+  const a = await app(t, '#calendar');
+  a.$('#stableEmptyNew').click();
+  const label = a.$('.stable-reminder-label');
+  const number = a.$('#scRemNum');
+  const unit = a.$('#scRemUnit');
+  assert.equal(label.textContent.trim(), 'Erinnerung vorher (persönlich pro Eintrag)');
+  assert.equal(label.htmlFor, 'scRemNum');
+  assert.equal(number.type, 'number');
+  assert.equal(unit.getAttribute('aria-label'), 'Einheit der Erinnerung');
+  assert.deepEqual(Array.from(unit.options).map(option => option.textContent), ['Minute(n)', 'Stunde(n)', 'Tag(e)', 'Woche(n)']);
+  const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
+  assert.match(stable, /\.stable-reminder\{grid-template-columns:minmax\(96px,125px\) minmax\(0,1fr\)/);
+});
