@@ -309,6 +309,22 @@ test('Notes page follows the OneNote reference structure when empty', async t =>
   assert.match(a.$('#dynamic').textContent, /Noch keine Notiz ausgewählt/);
 });
 
+test('Stats page renders the professional analytics dashboard', async t => {
+  const a = await app(t, '#stats', {
+    [STORE]: { entries: [
+      { date: '2026-09-08', minutes: 90, category: 'Organisation', project: 'Intern' },
+      { date: '2026-09-07', minutes: 30, category: 'Meeting', project: 'Intern' }
+    ], weekly: '42h 00' }
+  });
+  assert.equal(a.$('.stats-hero h2').textContent, 'Arbeitszeit im Überblick');
+  assert.equal(a.$('.stats-metrics').querySelectorAll('article').length, 7);
+  assert.ok(a.$('.stats-week-chart'));
+  assert.equal(a.$('.stats-chart').querySelectorAll('.stats-bar-col').length, 7);
+  assert.ok(a.$('.stats-category'));
+  assert.ok(a.$('.stats-donut'));
+  assert.equal(a.$('#statsPdf').textContent.includes('PDF-Bericht'), true);
+});
+
 test('Overview mini-calendar day click opens that day in entries', async t => {
   const a = await app(t, '#overview', {
     [STORE]: { entries: [
