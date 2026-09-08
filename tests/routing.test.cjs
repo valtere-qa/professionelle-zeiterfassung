@@ -453,6 +453,17 @@ test('Adding an entry shows a red required-field error and focuses the missing f
   assert.equal(a.window.document.activeElement, a.$('#category'));
 });
 
+test('Daily bookings render a duplicate action per row and persist the copy', async t => {
+  const a = await app(t, '#overview', {
+    [STORE]: { entries: [{ id: 'entry-1', date: '2026-09-08', category: 'Testing', project: 'Intern', minutes: 90 }] }
+  });
+  const duplicate = a.$('#entryList [data-entry-duplicate]');
+  assert.ok(duplicate, 'daily booking row has a duplicate action');
+  duplicate.click();
+  assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).entries.length, 2);
+  assert.equal(a.window.document.querySelectorAll('#entryList .entry').length, 2);
+});
+
 test('Day completion uses a styled confirmation dialog and updates immediately', async t => {
   const a = await app(t, '#overview', { [STORE]: { entries: [{ date: '2026-09-08', minutes: 30, category: 'Testing', project: 'Intern' }] } });
   const close = a.$('#closeDay');
