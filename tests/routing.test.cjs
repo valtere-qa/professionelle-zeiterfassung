@@ -250,6 +250,16 @@ test('Calendar reminder controls show the personal per-entry label and remain us
   assert.match(stable, /\.stable-reminder\{grid-template-columns:140px minmax\(0,1fr\);gap:12px/);
 });
 
+test('Reminder indicator counts saved reminders and opens their calendar date', async t => {
+  const a = await app(t, '#overview', {
+    ['professionelle-zeiterfassung.calendar.v1']: [{ id: 'rem-1', title: 'Arzt', type: 'Termin', date: '2026-09-20', reminder: 60 }]
+  });
+  assert.equal(a.$('#noticeCount').textContent, '1');
+  a.$('#noticeCount').click();
+  assertView(a, 'calendar');
+  assert.equal(a.window.localStorage.getItem('professionelle-zeiterfassung.selected-entry-date'), '2026-09-20');
+});
+
 test('Calendar uses compact desktop dimensions while keeping the grid readable', async t => {
   const a = await app(t, '#calendar');
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');

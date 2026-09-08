@@ -183,7 +183,7 @@
         const type=$("#scType",root).value, unit=$("#scRemUnit",root).value, value=Math.max(0,Math.round(Number($("#scRemNum",root).value||0))), allDay=$("#scAll",root).checked;
         const data={title,type,date,start:$("#scStart",root).value,end:$("#scEnd",root).value,allDay,place:$("#scPlace",root).value.trim(),reminderValue:value,reminderUnit:unit,reminder:value*reminderUnits[unit].factor,note:$("#scNote",root).value.trim()};
         if(existing){Object.assign(existing,data);save(CALENDAR,events);updateCalendar(existing)}else{const created=Object.assign({id:crypto.randomUUID()},data);events.push(created);save(CALENDAR,events);pushCalendar(created)}
-        root.remove();cal.selected=date;cal.month=new Date(date+"T12:00:00");cal.month.setDate(1);draw();toast(existing?"Kalendereintrag aktualisiert.":"Kalendereintrag gespeichert.");
+        root.remove();cal.selected=date;cal.month=new Date(date+"T12:00:00");cal.month.setDate(1);draw();checkReminders();toast(existing?"Kalendereintrag aktualisiert.":"Kalendereintrag gespeichert.");
       });
       const allDayBox=$("#scAll"), startInput=$("#scStart"), endInput=$("#scEnd"), toggleTimes=()=>{startInput.disabled=endInput.disabled=allDayBox.checked};
       if(allDayBox){allDayBox.onchange=toggleTimes;toggleTimes()}
@@ -373,7 +373,7 @@
       if(due<=now&&now-due<86400000&&!sent[key]){sent[key]=now;changed=true;notifyUser(event.title||"Kalender-Erinnerung",(event.allDay?"Heute":(event.start||""))+(event.place?" · "+event.place:""));}
     });
     if(changed)save(REMINDER_STATE,sent);
-    const count=current.filter(event=>Date.parse(event.date+"T"+(event.start||"09:00")+":00")>=now).length;const badge=$("#noticeCount");if(badge)badge.textContent=String(count);
+    const count=current.length;const badge=$("#noticeCount");if(badge)badge.textContent=String(count);
   };
   const init=()=>{
     // Bind navigation before optional data/reminder work can fail.
@@ -381,7 +381,8 @@
     if("scrollRestoration" in history)history.scrollRestoration="manual";
     if(!Storage.prototype.__zeiterfassungPatched){const originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){originalSetItem.call(this,key,value);window.dispatchEvent(new CustomEvent("zeiterfassung-storage-changed",{detail:key}));};Storage.prototype.__zeiterfassungPatched=true;}
     window.addEventListener("zeiterfassung-storage-changed",e=>{if([STORE,CALENDAR,NOTES].includes(e.detail))requestRefresh()});window.addEventListener("storage",e=>{if([STORE,CALENDAR,NOTES].includes(e.key))requestRefresh()});
-    bindWorkMode();const searchInput=$("#search");if(searchInput)searchInput.addEventListener("input",()=>{entryPage=1;refreshOverview()});
+    bindWorkMode();const reminderMetric=$("#noticeCount")?.closest(".metric");if(reminderMetric&&!reminderMetric.dataset.bound){reminderMetric.dataset.bound="1";reminderMetric.setAttribute("role","button");reminderMetric.setAttribute("tabindex","0");const openReminders=()=>{const event=read(CALENDAR,[]).filter(item=>Number(item.reminder||0)>0).sort((a,b)=>String(a.date).localeCompare(String(b.date)))[0];if(event?.date)localStorage.setItem(SELECTED_ENTRY_DATE,event.date);routeTo("calendar",true)};reminderMetric.onclick=openReminders;reminderMetric.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openReminders()}}}
+    const searchInput=$("#search");if(searchInput)searchInput.addEventListener("input",()=>{entryPage=1;refreshOverview()});
     pullRemote();window.addEventListener("zeiterfassung-auth-changed",()=>{pullRemote();requestRefresh()});window.ZeiterfassungRefresh=()=>{if(refreshTimer){clearTimeout(refreshTimer);refreshTimer=0}refreshNow()};window.addEventListener("popstate",()=>routeTo(routeFromLocation(),false));window.addEventListener("hashchange",()=>routeTo(routeFromLocation(),false));checkReminders();routeTo(routeFromLocation(),false);setInterval(checkReminders,30000);$$("body *").forEach(x=>{if(x.childNodes.length===1){const raw=x.textContent||"";const normalized=raw.replace(/Valt%C3%A8re(?:%20|\s)Fansi/gi,"Valtère Fansi");if(normalized!==raw)x.textContent=normalized;}});};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
