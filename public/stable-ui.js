@@ -38,7 +38,7 @@
   const requestRefresh=()=>{if(refreshTimer)return;refreshTimer=setTimeout(()=>{refreshTimer=0;refreshNow()},0)};
 
   const refreshOverview=()=>{
-    const d=state(), todayEntries=d.entries.filter(e=>e.date===today()), total=todayEntries.reduce((sum,e)=>sum+Number(e.minutes||0),0), all=d.entries.reduce((sum,e)=>sum+Number(e.minutes||0),0);
+    const d=state(), todayEntries=d.entries.map((e,i)=>Object.assign({_i:i},e)).filter(e=>e.date===today()), total=todayEntries.reduce((sum,e)=>sum+Number(e.minutes||0),0), all=d.entries.reduce((sum,e)=>sum+Number(e.minutes||0),0);
     const set=(id,value)=>{const n=$("#"+id);if(n)n.textContent=value};
     set("todayTotal",format(total)); set("entrySum","Gesamt: "+format(total)); set("weekTotal",format(all));
     const dailyTarget=minutes(d.daily)||480, balance=total-dailyTarget; set("balance",(balance>=0?"+":"−")+format(Math.abs(balance)));
@@ -52,7 +52,9 @@
       entryPage=Math.min(entryPage,totalPages);
       const start=(entryPage-1)*ENTRY_PAGE_SIZE, rows=filteredRows.slice(start,start+ENTRY_PAGE_SIZE);
       list.className=rows.length?"":"empty";
-      list.innerHTML=rows.length?rows.map(e=>"<div class='entry'><div class='entry-icon'>◷</div><div><b>"+escapeHtml(e.category)+" · "+escapeHtml(e.project)+"</b><small>"+escapeHtml(e.description||"Keine Beschreibung")+(e.notes?" · "+escapeHtml(e.notes):"")+"</small></div><div class='time'>"+format(e.minutes)+"<small>"+escapeHtml(e.time||"")+"</small></div></div>").join(""):"<div class='clock'>◷</div><b>Noch keine Zeit gebucht</b><p>Erfasse oben deine erste Leistung.</p>";
+      list.innerHTML=rows.length?rows.map(e=>"<div class='entry'><div class='entry-icon'>◷</div><div><b>"+escapeHtml(e.category)+" · "+escapeHtml(e.project)+"</b><small>"+escapeHtml(e.description||"Keine Beschreibung")+(e.notes?" · "+escapeHtml(e.notes):"")+"</small></div><div class='time'>"+format(e.minutes)+"<small>"+escapeHtml(e.time||"")+"</small></div><div class='entry-actions'><button class='delete' data-entry-edit='"+e._i+"' aria-label='Buchung bearbeiten' title='Buchung bearbeiten'>✎</button><button class='delete' data-entry-delete='"+e._i+"' aria-label='Buchung löschen' title='Buchung löschen'>×</button></div></div>").join(""):"<div class='clock'>◷</div><b>Noch keine Zeit gebucht</b><p>Erfasse oben deine erste Leistung.</p>";
+      $$('[data-entry-edit]',list).forEach(button=>button.onclick=()=>editEntry(Number(button.dataset.entryEdit),refreshOverview));
+      $$('[data-entry-delete]',list).forEach(button=>button.onclick=()=>{if(confirm("Buchung löschen?")){d.entries.splice(Number(button.dataset.entryDelete),1);save(STORE,d);refreshOverview();toast("Buchung gelöscht.")}});
       const pagination=$("#entryPagination");
       if(pagination){
         const hasPages=filteredRows.length>ENTRY_PAGE_SIZE;
@@ -65,18 +67,29 @@
   const showModal = (title, body, action, onSave) => {
     $(".stable-modal")?.remove();
     const root=document.createElement("div"); root.className="stable-modal";
-    root.innerHTML="<div class='stable-dialog'><button class='stable-x' aria-label='Schliessen'>×</button><h2>"+title+"</h2><div class='stable-form'>"+body+"</div><div class='stable-actions'><button class='btn stable-cancel'>Abbrechen</button><button class='btn primary stable-save'>"+action+"</button></div></div>";
+    root.innerHTML="<div class='stable-dialog'><button class='stable-x' aria-label='Schliessen'>×</button><h2>"+title+"</h2><div class='stable-form'>"+body+"</div><div class='stable-form-error' role='alert' hidden></div><div class='stable-actions'><button type='button' class='btn stable-cancel'>Abbrechen</button><button type='button' class='btn primary stable-save'>"+action+"</button></div></div>";
     document.body.append(root);
     $(".stable-x",root).onclick=()=>root.remove(); $(".stable-cancel",root).onclick=()=>root.remove();
     root.onclick=e=>{if(e.target===root)root.remove()}; $(".stable-save",root).onclick=()=>onSave(root);
+    return root;
+  };
+  const showValidation = (root, selectors, message) => {
+    let error=$(".stable-form-error",root), first=selectors.find(selector=>!$(selector,root)?.value?.trim());
+    selectors.forEach(selector=>$(selector,root)?.classList.remove("stable-invalid"));
+    if(!first){if(error)error.hidden=true;return true}
+    const input=$(first,root); input?.classList.add("stable-invalid"); input?.setAttribute("aria-invalid","true");
+    if(!error){error=document.createElement("div");error.className="stable-form-error";input?.before(error)}
+    error.textContent=message;error.hidden=false; input?.focus(); return false;
   };
   const editEntry = (index, redraw) => {
     const d=state(), e=d.entries[index]; if(!e) return;
-    showModal("Buchung bearbeiten",
+    const root=showModal("Buchung bearbeiten",
+      "<div class='stable-two'><div class='field'><label>Kategorie *</label><select id='seCategory'>"+d.categories.map(x=>"<option>"+escapeHtml(x)+"</option>").join("")+"</select></div><div class='field'><label>Projekt / Betrieb *</label><select id='seProject'>"+d.projects.map(x=>"<option>"+escapeHtml(typeof x==='string'?x:x.name)+"</option>").join("")+"</select></div></div>"+
       "<div class='field'><label>Datum *</label><input id='seDate' type='date' value='"+escapeHtml(e.date||today())+"'></div>"+
       "<div class='stable-two'><div class='field'><label>Leistung</label><input id='seDesc' value='"+escapeHtml(e.description||"")+"'></div><div class='field'><label>Dauer (Minuten) *</label><input id='seMinutes' type='number' min='1' value='"+Number(e.minutes||0)+"'></div></div>"+
       "<div class='field'><label>Bemerkung / Jira-Referenz</label><input id='seNote' value='"+escapeHtml(e.notes||"")+"'></div>",
-      "Speichern", root => { e.date=$("#seDate",root).value; e.description=$("#seDesc",root).value; e.minutes=Number($("#seMinutes",root).value||0); e.notes=$("#seNote",root).value; save(STORE,d); root.remove(); redraw(); toast("Buchung gespeichert."); });
+      "Speichern", root => { if(!showValidation(root,["#seCategory","#seProject","#seDate","#seMinutes"],"Bitte fülle alle Pflichtfelder aus."))return; e.category=$("#seCategory",root).value; e.project=$("#seProject",root).value; e.date=$("#seDate",root).value; e.description=$("#seDesc",root).value; e.minutes=Number($("#seMinutes",root).value||0); e.notes=$("#seNote",root).value; save(STORE,d); root.remove(); redraw(); toast("Buchung gespeichert."); });
+    $("#seCategory",root).value=e.category||d.categories[0]||""; $("#seProject",root).value=e.project||((d.projects[0]&&typeof d.projects[0]==='object')?d.projects[0].name:d.projects[0]||"");
   };
   const renderCalendar = p => {
     const events=read(CALENDAR,[]), now=new Date(), savedDate=localStorage.getItem(SELECTED_ENTRY_DATE), cal={selected:savedDate||today(), month:new Date((savedDate||today())+"T12:00:00"), mode:"day"};
@@ -122,7 +135,7 @@
       const body="<div class='field'><label>Typ *</label><select id='scType'><option "+((item.type||"Termin")==="Termin"?"selected":"")+">Termin</option><option "+(item.type==="Aufgabe"?"selected":"")+">Aufgabe</option><option "+(item.type==="Geburtstag"?"selected":"")+">Geburtstag</option></select></div><div class='field'><label>Titel *</label><input id='scTitle' value='"+escapeHtml(item.title||"")+"' placeholder='Titel eingeben'></div><div class='stable-date-row'><div class='field'><label>Datum *</label><input id='scDate' type='date' value='"+escapeHtml(item.date||cal.selected)+"'></div><label class='stable-check'><input id='scAll' type='checkbox' "+(item.allDay?"checked":"")+"> Ganztägig</label></div><div class='stable-two'><div class='field'><label>Beginn</label><input id='scStart' type='time' value='"+escapeHtml(item.start||"09:00")+"'></div><div class='field'><label>Ende</label><input id='scEnd' type='time' value='"+escapeHtml(item.end||"10:00")+"'></div></div><div class='field'><label>Ort</label><input id='scPlace' value='"+escapeHtml(item.place||"")+"' placeholder='Ort oder Videokonferenz'></div><div class='field'><label class='stable-reminder-label' for='scRemNum'>Erinnerung vorher <span>(persönlich pro Eintrag)</span></label><div class='stable-reminder'><input id='scRemNum' type='number' min='0' step='1' value='"+currentValue+"'><select id='scRemUnit' aria-label='Einheit der Erinnerung'><option value='minute' "+(currentUnit==="minute"?"selected":"")+">Minute(n)</option><option value='hour' "+(currentUnit==="hour"?"selected":"")+">Stunde(n)</option><option value='day' "+(currentUnit==="day"?"selected":"")+">Tag(e)</option><option value='week' "+(currentUnit==="week"?"selected":"")+">Woche(n)</option></select></div></div><div class='field'><label>Notiz</label><textarea id='scNote' placeholder='Zusätzliche Informationen'>"+escapeHtml(item.note||"")+"</textarea></div>";
       showModal(existing?"Kalendereintrag bearbeiten":"Neuer Kalendereintrag",body,"Speichern",root=>{
         const title=$("#scTitle",root).value.trim(), date=$("#scDate",root).value;
-        if(!title||!date){toast("Titel und Datum sind Pflichtfelder.");return}
+        if(!showValidation(root,["#scTitle","#scDate"],"Titel und Datum sind Pflichtfelder."))return;
         const type=$("#scType",root).value, unit=$("#scRemUnit",root).value, value=Math.max(0,Math.round(Number($("#scRemNum",root).value||0))), allDay=$("#scAll",root).checked;
         const data={title,type,date,start:$("#scStart",root).value,end:$("#scEnd",root).value,allDay,place:$("#scPlace",root).value.trim(),reminderValue:value,reminderUnit:unit,reminder:value*reminderUnits[unit].factor,note:$("#scNote",root).value.trim()};
         if(existing){Object.assign(existing,data);save(CALENDAR,events)}else{const created=Object.assign({id:crypto.randomUUID()},data);events.push(created);save(CALENDAR,events);pushCalendar(created)}
@@ -159,7 +172,7 @@
       $("#newStableNote",p)?.addEventListener("click",createNote);$("#emptyNewNote",p)?.addEventListener("click",createNote);
       if(!active)return;
       const captureDraft=()=>{active.title=$("#activeNoteTitle",p).value.trim()||"Ohne Titel";active.content=$("#activeNoteContent",p).value;active.color=$("#activeNoteColor",p).value;active.section=$("#activeNoteSection",p).value;active.tasks=normalizeTasks(active)};
-      const saveActive=()=>{captureDraft();persist(active);draw();toast("Notiz gespeichert.")};
+      const saveActive=()=>{if(!showValidation(p,["#activeNoteTitle"],"Der Notiztitel ist ein Pflichtfeld."))return;captureDraft();persist(active);draw();toast("Notiz gespeichert.")};
       $("#saveActiveNote",p).onclick=saveActive;$("#deleteActiveNote",p).onclick=()=>{if(confirm("Notiz löschen?")){const index=notes.findIndex(n=>String(n.id)===String(active.id));if(index>=0){const deleted=notes.splice(index,1)[0];removeRemoteNote(deleted);selectedId=notes[0]?.id||null;save(NOTES,notes);draw();toast("Notiz gelöscht.")}}};
       $("#addActiveTask",p).onclick=()=>{const input=$("#activeTaskText",p);captureDraft();if(input.value.trim()){active.tasks.push({text:input.value.trim(),done:false});persist(active);draw();toast("Aufgabe hinzugefügt.")}};
       $("#activeTaskText",p).onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();$("#addActiveTask",p).click()}};

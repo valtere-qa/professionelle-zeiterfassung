@@ -35,25 +35,33 @@
   const fmt=m=>Math.floor(Number(m||0)/60)+"h "+String(Number(m||0)%60).padStart(2,"0");
   const selectedDate=()=>document.querySelector("#workDate")?.value||new Date().toISOString().slice(0,10);
   const toast=t=>{const e=document.createElement("div");e.textContent=t;Object.assign(e.style,{position:"fixed",right:"18px",bottom:"85px",zIndex:100,background:"#123263",color:"#fff",padding:"12px 16px",borderRadius:"10px"});document.body.append(e);setTimeout(()=>e.remove(),2200)};
+  function fieldError(selector,message){
+    const field=document.querySelector(selector), wrapper=field?.closest(".field")||field?.parentElement; if(!field||!wrapper)return false;
+    wrapper.querySelector(".field-error")?.remove(); field.classList.add("field-invalid"); field.setAttribute("aria-invalid","true");
+    const error=document.createElement("div");error.className="field-error";error.setAttribute("role","alert");error.textContent=message;wrapper.append(error);field.focus();return true;
+  }
+  function clearFieldErrors(){document.querySelectorAll(".field-invalid").forEach(field=>{field.classList.remove("field-invalid");field.removeAttribute("aria-invalid")});document.querySelectorAll(".field-error").forEach(error=>error.remove())}
   function refresh() {
     if(window.ZeiterfassungRefresh){window.ZeiterfassungRefresh();return}
     document.querySelector("#search")?.dispatchEvent(new Event("input",{bubbles:true}));
     document.querySelector("#dateLabel")?.closest(".top")?.querySelector("p");
   }
   function saveEntry(){
+    clearFieldErrors();
     const d=read(), duration=document.querySelector("#duration span")?.textContent||"1h 30";
     const category=document.querySelector("#category")?.value, project=document.querySelector("#project")?.value;
-    if(!category||!project){toast("Kategorie und Projekt sind Pflichtfelder.");return}
+    if(!category){fieldError("#category","Kategorie ist ein Pflichtfeld.");return}
+    if(!project){fieldError("#project","Projekt / Betrieb ist ein Pflichtfeld.");return}
     const value=duration.match(/(\d+)\s*h\s*(\d+)/i);
     const minutes=value?Number(value[1])*60+Number(value[2]):0;
-    if(!minutes){toast("Bitte eine gültige Dauer auswählen.");return}
+    if(!minutes){fieldError("#duration","Dauer ist ein Pflichtfeld.");return}
     d.entries.unshift({date:selectedDate(),category,project,description:document.querySelector("#description")?.value||"",notes:document.querySelector("#notes")?.value||"",minutes,time:new Date().toLocaleTimeString("de-CH",{hour:"2-digit",minute:"2-digit"})});
     write(d);if(document.querySelector("#description"))document.querySelector("#description").value="";if(document.querySelector("#notes"))document.querySelector("#notes").value="";
     refresh();toast("Buchung gespeichert.");
   }
   function addEditActions(){
     document.querySelectorAll("#entryList .entry").forEach((row,index)=>{
-      if(row.querySelector("[data-edit]"))return;
+      if(row.querySelector("[data-edit], [data-entry-edit]"))return;
       const button=document.createElement("button");button.className="delete";button.dataset.edit=index;button.title="Bearbeiten";button.textContent="✎";
       row.append(button);
       button.onclick=()=>{const d=read(), filter=(document.querySelector("#search")?.value||"").toLowerCase(), list=d.entries.filter(e=>[e.category,e.project,e.description,e.notes].join(" ").toLowerCase().includes(filter)), entry=list[index];if(!entry)return;
@@ -68,6 +76,7 @@
     const n=document.querySelector("#noticeCount");if(n)n.textContent=count?"0":"1";
   }
   function enhance2(){
+    if(!document.querySelector("#validationStyles")){const style=document.createElement("style");style.id="validationStyles";style.textContent=".field-invalid,.stable-invalid{border-color:#c4314b!important;box-shadow:0 0 0 2px #c4314b33!important}.field-error,.stable-form-error{display:block;color:#c4314b;font-size:12px;font-weight:600;margin-top:5px}.stable-form-error{padding:9px 11px;background:#fff3f3;border-radius:6px}.stable-form-error[hidden]{display:none}";document.head.append(style)}
     const add=document.querySelector("#addEntry");if(add)add.onclick=saveEntry;
     const list=document.querySelector("#entryList");if(list)new MutationObserver(addEditActions).observe(list,{childList:true,subtree:true});
     addEditActions();notification();

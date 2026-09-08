@@ -372,6 +372,36 @@ test('Apple-inspired SVG icons replace static and dynamic symbols throughout the
   assert.ok(a.$('.auth-menu .apple-icon'), 'authentication menu uses the shared icon system');
 });
 
+test('Entry edit and delete actions use the matching controls and validate required fields', async t => {
+  const a = await app(t, '#entries', {
+    [STORE]: { entries: [{ date: '2026-09-08', category: 'Testing', project: 'Intern', description: 'Prüfung', minutes: 30 }] }
+  });
+  const edit = a.$('.stable-entry [data-edit]');
+  assert.ok(edit, 'an edit action is rendered for the entry');
+  edit.click();
+  assert.ok(a.$('.stable-dialog'));
+  assert.ok(a.$('#seCategory'));
+  a.$('#seCategory').value = '';
+  a.$('.stable-save').click();
+  assert.equal(a.$('.stable-form-error').hidden, false);
+  assert.equal(a.window.document.activeElement, a.$('#seCategory'));
+  a.$('.stable-x').click();
+  a.window.confirm = () => true;
+  const remove = a.$('.stable-entry [data-delete]');
+  assert.ok(remove, 'a delete action is rendered for the entry');
+  remove.click();
+  assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).entries.length, 0);
+});
+
+test('Adding an entry shows a red required-field error and focuses the missing field', async t => {
+  const a = await app(t, '#overview');
+  a.$('#category').innerHTML = '';
+  a.$('#addEntry').click();
+  assert.ok(a.$('#category').classList.contains('field-invalid'));
+  assert.equal(a.$('.field-error').textContent, 'Kategorie ist ein Pflichtfeld.');
+  assert.equal(a.window.document.activeElement, a.$('#category'));
+});
+
 test('Profile submenu shows only valid authentication actions when signed out', async t => {
   const a = await app(t, '#overview');
   a.$('.profile').click();
