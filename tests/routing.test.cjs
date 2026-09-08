@@ -464,6 +464,25 @@ test('Daily bookings render a duplicate action per row and persist the copy', as
   assert.equal(a.window.document.querySelectorAll('#entryList .entry').length, 2);
 });
 
+test('Stopping the timer creates and displays a saved booking', async t => {
+  const a = await app(t, '#overview', {
+    [STORE]: { categories: ['Testing'], projects: ['Intern'], entries: [] }
+  });
+  a.$('#category').value = 'Testing';
+  a.$('#project').value = 'Intern';
+  a.$('#description').value = 'Timer-Test';
+  const originalNow = a.window.Date.now;
+  a.window.Date.now = () => 1000000;
+  a.$('#timer').click();
+  a.window.Date.now = () => 1000000 + 90 * 1000;
+  a.$('#timer').click();
+  a.window.Date.now = originalNow;
+  const entries = JSON.parse(a.window.localStorage.getItem(STORE)).entries;
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].minutes, 2);
+  assert.match(a.$('#entryList').textContent, /Timer-Test/);
+});
+
 test('Day completion uses a styled confirmation dialog and updates immediately', async t => {
   const a = await app(t, '#overview', { [STORE]: { entries: [{ date: '2026-09-08', minutes: 30, category: 'Testing', project: 'Intern' }] } });
   const close = a.$('#closeDay');

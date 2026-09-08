@@ -386,9 +386,10 @@
     if(changed)save(REMINDER_STATE,sent);
     const count=current.length;const badge=$("#noticeCount");if(badge)badge.textContent=String(count);
   };
+  const handleTimerClick = e => { if(!e.target.closest("#timer"))return; e.preventDefault();e.stopImmediatePropagation();const button=$("#timer");if(!timerStarted){timerStarted=Date.now();button.textContent="■ Timer stoppen";timerInterval=setInterval(()=>{const elapsed=Math.floor((Date.now()-timerStarted)/1000);button.textContent="■ "+String(Math.floor(elapsed/3600)).padStart(2,"0")+":"+String(Math.floor(elapsed/60)%60).padStart(2,"0")+":"+String(elapsed%60).padStart(2,"0")},1000);toast("Timer gestartet.");return;}const elapsed=Math.max(1,Math.round((Date.now()-timerStarted)/60000));clearInterval(timerInterval);timerStarted=0;button.textContent="▷ Timer starten";const d=state(),entry={id:crypto.randomUUID(),date:$("#workDate")?.value||today(),category:$("#category")?.value||"Organisation",project:$("#project")?.value||"Intern",description:$("#description")?.value||"Timer-Buchung",minutes:elapsed,notes:$("#notes")?.value||"",time:new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})};d.entries.push(entry);save(STORE,d);const durationButton=$("#duration");if(durationButton){const span=$("span",durationButton);if(span)span.textContent=format(elapsed)}refreshOverview();toast("Timer gestoppt – Buchung wurde erstellt.");};
   const init=()=>{
     // Bind navigation before optional data/reminder work can fail.
-    document.addEventListener("click",handleClick,true);
+    document.addEventListener("click",handleTimerClick,true);document.addEventListener("click",handleClick,true);
     if("scrollRestoration" in history)history.scrollRestoration="manual";
     if(!Storage.prototype.__zeiterfassungPatched){const originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){originalSetItem.call(this,key,value);window.dispatchEvent(new CustomEvent("zeiterfassung-storage-changed",{detail:key}));};Storage.prototype.__zeiterfassungPatched=true;}
     window.addEventListener("zeiterfassung-storage-changed",e=>{if([STORE,CALENDAR,NOTES].includes(e.detail))requestRefresh()});window.addEventListener("storage",e=>{if([STORE,CALENDAR,NOTES].includes(e.key))requestRefresh()});
