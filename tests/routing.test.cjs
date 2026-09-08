@@ -258,3 +258,11 @@ test('Calendar uses compact desktop dimensions while keeping the grid readable',
   assert.match(stable, /\.stable-empty-cal\{padding:78px 16px\}/);
   assert.equal(a.$('[aria-label="Kalender"]').hidden, false);
 });
+
+test('Calendar layout matches the compact reference with a notification block and wider agenda', async t => {
+  const a = await app(t, '#calendar');
+  assert.equal(a.$('.stable-cal-notice').textContent.includes('Browser- & Smartphone-Benachrichtigungen aktiv'), true);
+  const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
+  assert.match(stable, /\.stable-cal-layout\{grid-template-columns:minmax\(0,\.92fr\) minmax\(0,1\.08fr\)\}/);
+  assert.match(stable, /\.stable-day\{min-height:76px;padding:10px\}/);
+});
