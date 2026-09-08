@@ -360,7 +360,8 @@ test('Profile submenu shows only valid authentication actions when signed out', 
   assert.equal(a.$('#authRegister').hidden, false);
   assert.equal(a.$('#authBackup').hidden, false);
   assert.equal(a.$('#authRestore').hidden, false);
-  assert.equal(a.$('#authLogout').hidden, true);
+  assert.equal(a.$('#authLogout').hidden, false);
+  assert.equal(a.$('#authLogout').disabled, true);
   assert.equal(a.$('#backupBtn'), null);
   a.$('.profile').click();
   assert.equal(a.$('.auth-menu'), null);
