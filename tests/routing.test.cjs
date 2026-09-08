@@ -385,6 +385,17 @@ test('Logout closes the profile menu and opens the login form immediately', asyn
   assert.ok(a.$('#authPassword'));
   assert.equal(a.$('.shell').classList.contains('auth-locked'), true);
   assert.equal(a.window.localStorage.getItem('professionelle-zeiterfassung.session'), null);
+  assert.equal(a.window.localStorage.getItem('professionelle-zeiterfassung.logged-out'), '1');
+});
+
+test('A URL reload after logout opens the login form instead of the previous profile', async t => {
+  const a = await app(t, '#overview', {
+    ['professionelle-zeiterfassung.logged-out']: '1'
+  });
+  assert.ok(a.$('.auth-overlay'));
+  assert.ok(a.$('#authEmail'));
+  assert.ok(a.$('#authPassword'));
+  assert.equal(a.$('.shell').classList.contains('auth-locked'), true);
 });
 
 test('Overview mini-calendar day click opens that day in entries', async t => {
@@ -394,11 +405,12 @@ test('Overview mini-calendar day click opens that day in entries', async t => {
       { date: '2026-09-08', minutes: 30, category: 'Meeting', project: 'Intern', description: 'Heute' }
     ] }
   });
-  const day = a.window.document.querySelector('#days button:not(.muted)');
+  const day = [...a.window.document.querySelectorAll('#days button:not(.muted)')]
+    .find(button => button.textContent.trim() === '8');
   assert.ok(day, 'Calendar day button exists');
   day.click();
   await tick();
   assertView(a, 'entries');
-  assert.match(a.$('#dynamic').textContent, /Kalendertag/);
-  assert.doesNotMatch(a.$('#dynamic').textContent, /2026-09-08/);
+  assert.match(a.$('#dynamic').textContent, /Heute/);
+  assert.doesNotMatch(a.$('#dynamic').textContent, /Kalendertag/);
 });
