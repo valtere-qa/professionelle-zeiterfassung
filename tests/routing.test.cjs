@@ -325,6 +325,7 @@ test('Empty checklist task shows a red validation message and focuses the field'
   const a = await app(t, '#notes', {
     [NOTES]: [{ id: 'note-1', title: 'Planung', content: '', tasks: [], color: 'blau', section: 'Arbeit' }]
   });
+  assert.equal(a.window.document.querySelectorAll('.stable-color-choice').length, 5);
   a.$('#addActiveTask').click();
   assert.match(a.$('#dynamic').textContent, /Bitte eine Aufgabe eingeben/);
   assert.equal(a.$('#activeTaskText').classList.contains('stable-invalid'), true);
@@ -400,6 +401,11 @@ test('Entry edit and delete actions use the matching controls and validate requi
   });
   const edit = a.$('.stable-entry [data-edit]');
   assert.ok(edit, 'an edit action is rendered for the entry');
+  assert.ok(a.$('.stable-entry-icon'), 'the entry has a colored category icon');
+  const duplicate = a.$('.stable-entry [data-duplicate]');
+  assert.ok(duplicate, 'a duplicate action is rendered for the entry');
+  duplicate.click();
+  assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).entries.length, 2);
   edit.click();
   assert.ok(a.$('.stable-dialog'));
   assert.ok(a.$('#seCategory'));
@@ -415,7 +421,7 @@ test('Entry edit and delete actions use the matching controls and validate requi
   assert.ok(a.$('.stable-dialog'), 'delete opens a confirmation form');
   assert.equal(a.$('.stable-dialog').textContent.includes('Dieser Vorgang kann nicht rückgängig gemacht werden.'), true);
   a.$('.stable-save').click();
-  assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).entries.length, 0);
+  assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).entries.length, 1);
 });
 
 test('Add actions open styled forms and persist named items without native prompts', async t => {
