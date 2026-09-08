@@ -55,7 +55,7 @@
     set("todayTotal",format(total)); set("entrySum","Gesamt: "+format(total)); set("weekTotal",format(all));
     const dailyTarget=minutes(d.daily)||480, balance=total-dailyTarget; set("balance",(balance>=0?"+":"−")+format(Math.abs(balance)));
     const bar=$("#weekBar");if(bar)bar.style.width=Math.min(100,total/Math.max(1,minutes(d.weekly)||2400)*100)+"%";
-    const title=$("#qualityTitle"), text=$("#qualityText"), close=$("#closeDay");if(title)title.textContent=total?"Bereit zum Abschluss":"Prüfung erforderlich";if(text)text.textContent=total?"Zeit wurde erfasst und kann abgeschlossen werden.":"Für diesen Arbeitstag ist noch keine Zeit erfasst.";if(close)close.disabled=!total;
+    const title=$("#qualityTitle"), text=$("#qualityText"), close=$("#closeDay"), closed=Array.isArray(d.closedDays)&&d.closedDays.includes(today());if(title)title.textContent=closed?"Tag abgeschlossen":total?"Bereit zum Abschluss":"Prüfung erforderlich";if(text)text.textContent=closed?"Die Buchungen sind vor unbeabsichtigten Änderungen geschützt.":total?"Zeit wurde erfasst und kann abgeschlossen werden.":"Für diesen Arbeitstag ist noch keine Zeit erfasst.";if(close){close.disabled=!total;close.textContent=closed?"▣ Tag wieder öffnen":"▣ Tag abschliessen";}
     const list=$("#entryList");
     if(list){
       const q=($("#search")?.value||"").toLowerCase();
@@ -281,6 +281,11 @@
   };
   let timerStarted=0, timerInterval;
   const handleClick = e => {
+    const closeDay=e.target.closest("#closeDay");
+    if(closeDay&&!closeDay.disabled){
+      e.preventDefault();e.stopImmediatePropagation();const d=state(),date=today(),closed=Array.isArray(d.closedDays)&&d.closedDays.includes(date);
+      showModal(closed?"Tag wieder öffnen":"Tag abschließen",closed?"<p>Möchtest du diesen Arbeitstag wieder für Änderungen öffnen?</p>":"<p>Möchtest du diesen Arbeitstag abschließen?</p><p>Die Buchungen werden vor unbeabsichtigten Änderungen geschützt.</p>",closed?"Wieder öffnen":"Abschließen",root=>{d.closedDays=Array.isArray(d.closedDays)?d.closedDays:[];if(closed)d.closedDays=d.closedDays.filter(x=>x!==date);else if(!d.closedDays.includes(date))d.closedDays.push(date);save(STORE,d);root.remove();refreshOverview();toast(closed?"Tag wieder geöffnet.":"Tag abgeschlossen.")});return;
+    }
     const entryDelete=e.target.closest(".stable-entry [data-delete]");
     if(entryDelete){e.preventDefault();e.stopImmediatePropagation();const d=state(),index=Number(entryDelete.dataset.delete),item=d.entries[index];if(item)confirmDelete("Buchung löschen",escapeHtml(item.category||"Buchung")+" · "+escapeHtml(item.project||""),()=>{d.entries.splice(index,1);save(STORE,d);render("entries");toast("Buchung gelöscht.")});return;}
     const namedAdd=e.target.closest("#stableAdd");

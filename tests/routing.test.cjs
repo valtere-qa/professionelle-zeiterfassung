@@ -425,6 +425,18 @@ test('Adding an entry shows a red required-field error and focuses the missing f
   assert.equal(a.window.document.activeElement, a.$('#category'));
 });
 
+test('Day completion uses a styled confirmation dialog and updates immediately', async t => {
+  const a = await app(t, '#overview', { [STORE]: { entries: [{ date: '2026-09-08', minutes: 30, category: 'Testing', project: 'Intern' }] } });
+  const close = a.$('#closeDay');
+  assert.equal(close.disabled, false);
+  close.click();
+  assert.ok(a.$('.stable-dialog'));
+  assert.match(a.$('.stable-dialog').textContent, /Arbeitstag abschließen/);
+  a.$('.stable-save').click();
+  assert.match(a.$('#qualityTitle').textContent, /Tag abgeschlossen/);
+  assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).closedDays[0], '2026-09-08');
+});
+
 test('Profile submenu shows only valid authentication actions when signed out', async t => {
   const a = await app(t, '#overview');
   a.$('.profile').click();
