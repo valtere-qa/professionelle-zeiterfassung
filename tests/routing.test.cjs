@@ -352,6 +352,26 @@ test('The complete app exposes the contemporary 3D surface system', async t => {
   assert.equal(a.$('.nav [data-view="overview"]').classList.contains('active'), true);
 });
 
+test('Apple-inspired SVG icons replace static and dynamic symbols throughout the app', async t => {
+  const a = await app(t, '#overview');
+  const index = readFileSync(resolve(publicDir, 'index.html'), 'utf8');
+  const icons = readFileSync(resolve(publicDir, 'apple-icons.js'), 'utf8');
+  assert.match(index, /apple-icons\.js\?v=20260908-1/);
+  assert.match(icons, /class="apple-icon"/);
+  assert.ok(a.window.document.querySelectorAll('.nav .apple-icon').length >= 10);
+  assert.equal(a.window.document.querySelectorAll('.nav i').length, 10);
+  assert.ok([...a.window.document.querySelectorAll('.nav i')].every(node => node.querySelector('.apple-icon')));
+  a.click('calendar');
+  await tick();
+  assert.ok(a.$('#dynamic .apple-icon'), 'calendar controls use the shared icon system');
+  a.click('notes');
+  await tick();
+  assert.ok(a.$('#dynamic .apple-icon'), 'notes controls use the shared icon system');
+  a.$('.profile').click();
+  await tick();
+  assert.ok(a.$('.auth-menu .apple-icon'), 'authentication menu uses the shared icon system');
+});
+
 test('Profile submenu shows only valid authentication actions when signed out', async t => {
   const a = await app(t, '#overview');
   a.$('.profile').click();

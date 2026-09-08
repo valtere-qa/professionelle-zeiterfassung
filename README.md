@@ -63,6 +63,7 @@ Responsive Zeiterfassung für **Valtère Fansi** mit Cloudflare Worker, D1-Daten
 - public/auth-ui.js: Profil-Untermenü und Authentifizierungsdialog
 - public/api.js: API-Client und Session-Verwaltung
 - public/extra.js: Buchungserfassung und Synchronisierung
+- public/apple-icons.js: zentrales Apple-inspiriertes SVG-Icon-System für statische und dynamische Oberflächen
 - Die Hauptnavigation wird ausschließlich in `stable-ui.js` verarbeitet. Die alten Routing-Handler in `index.html` und `extra.js` sind entfernt; Buchungsfunktionen aus `extra.js` bleiben erhalten.
 
 ## Cloudflare
