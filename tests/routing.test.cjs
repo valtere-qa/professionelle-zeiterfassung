@@ -352,6 +352,19 @@ test('The complete app exposes the contemporary 3D surface system', async t => {
   assert.equal(a.$('.nav [data-view="overview"]').classList.contains('active'), true);
 });
 
+test('Profile submenu shows only valid authentication actions when signed out', async t => {
+  const a = await app(t, '#overview');
+  a.$('.profile').click();
+  await tick();
+  assert.equal(a.$('#authLogin').hidden, false);
+  assert.equal(a.$('#authRegister').hidden, false);
+  assert.equal(a.$('#authLogout').hidden, true);
+  a.$('#authLogin').click();
+  assert.ok(a.$('.auth-overlay'));
+  assert.ok(a.$('#authEmail'));
+  assert.ok(a.$('#authPassword'));
+});
+
 test('Overview mini-calendar day click opens that day in entries', async t => {
   const a = await app(t, '#overview', {
     [STORE]: { entries: [
