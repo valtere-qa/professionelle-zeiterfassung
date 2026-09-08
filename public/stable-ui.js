@@ -157,8 +157,8 @@
     const colors={blau:{label:"Blau",className:"note-blue"},grün:{label:"Grün",className:"note-green"},gelb:{label:"Gelb",className:"note-yellow"},rot:{label:"Rot",className:"note-red"},violett:{label:"Violett",className:"note-purple"}};
     const normalizeTasks=n=>Array.isArray(n.tasks)?n.tasks.filter(t=>t&&String(t.text||"").trim()).map(t=>({text:String(t.text||"").trim(),done:Boolean(t.done)})):[];
     const colorInfo=n=>colors[n.color]||colors.blau;
-    const syncNote=note=>{if(!api()?.hasSession?.()||!note?.id)return;api().update("notes",note.id,{title:note.title,content:note.content,checklist_json:JSON.stringify(note.tasks||[]),color:note.color,section:note.section||"Arbeit"}).catch(()=>toast("Notiz lokal gespeichert; D1-Synchronisierung fehlgeschlagen."));};
-    const removeRemoteNote=note=>{if(!api()?.hasSession?.()||!note?.id)return;api().remove("notes",note.id).catch(()=>toast("Notiz lokal gelöscht; D1-Löschung fehlgeschlagen."));};
+    const syncNote=note=>{if(!api()?.hasSession?.()||!note?.id)return;api().update("notes",note.id,{title:note.title,content:note.content,checklist_json:JSON.stringify(note.tasks||[]),color:note.color,section:note.section||"Arbeit"}).catch(error=>console.warn("Notiz lokal gespeichert; D1-Synchronisierung ausstehend.",error));};
+    const removeRemoteNote=note=>{if(!api()?.hasSession?.()||!note?.id)return;api().remove("notes",note.id).catch(error=>console.warn("Notiz lokal gelöscht; D1-Löschung ausstehend.",error));};
     const persist=note=>{save(NOTES,notes);syncNote(note)};
     const visible=()=>notes.filter(n=>(filter==="all"||String(n.color||"blau")===filter)&&(selectedSection==="all"||String(n.section||"Arbeit")===selectedSection)&&[n.title,n.content,(n.tasks||[]).map(t=>t.text).join(" ")].join(" ").toLowerCase().includes(query));
     const draw=()=>{
