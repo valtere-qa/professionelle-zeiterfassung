@@ -348,6 +348,7 @@ test('The complete app exposes the contemporary 3D surface system', async t => {
   assert.match(css, /--shadow-3d:/);
   assert.match(css, /\.btn\.primary\{background:linear-gradient\(145deg/);
   assert.match(css, /\.metric:hover\{transform:translateY\(-3px\)/);
+  assert.match(css, /\.work,\.quality,\.capture,\.entries,\.calendar,\.weekly\{overflow:hidden;box-shadow:var\(--shadow-3d\)/);
   assert.equal(a.$('.nav [data-view="overview"]').classList.contains('active'), true);
 });
 

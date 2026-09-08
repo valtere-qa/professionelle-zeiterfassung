@@ -61,7 +61,7 @@ main{background:transparent}.card,.metrics,.fav,.profile{box-shadow:var(--shadow
 .top{position:relative}.top:after{content:"";position:absolute;right:0;bottom:0;width:180px;height:2px;background:linear-gradient(90deg,transparent,var(--blue));opacity:.5}
 .btn{transition:transform .16s ease,box-shadow .16s ease,background .16s ease}.btn:hover{transform:translateY(-2px);box-shadow:0 7px 15px rgba(25,72,140,.16)}.btn:active{transform:translateY(1px);box-shadow:0 2px 5px rgba(25,72,140,.14)}.btn.primary{background:linear-gradient(145deg,#3280f3,#1556cf);box-shadow:0 7px 0 #0e3d9a,0 13px 22px rgba(37,99,235,.25)}.btn.primary:hover{box-shadow:0 9px 0 #0e3d9a,0 16px 25px rgba(37,99,235,.28)}.btn.primary:active{box-shadow:0 3px 0 #0e3d9a,0 7px 12px rgba(37,99,235,.2)}
 .metrics{transform:translateZ(0)}.metric{box-shadow:0 4px 0 #e4edf9,0 8px 14px rgba(27,71,135,.08);transition:transform .18s ease,box-shadow .18s ease}.metric:hover{transform:translateY(-3px);box-shadow:0 7px 0 #d3e1f5,0 14px 22px rgba(27,71,135,.14)}.metric-icon{box-shadow:0 4px 8px rgba(37,99,235,.16)}
-.work,.quality,.capture,.entries,.calendar,.weekly{overflow:hidden}.work:before,.capture:before{content:"";display:block;height:3px;margin:-20px -22px 17px;background:linear-gradient(90deg,#2563eb,#79adff,transparent);opacity:.9}.quality{box-shadow:var(--shadow-3d)}
+.work,.quality,.capture,.entries,.calendar,.weekly{overflow:hidden;box-shadow:var(--shadow-3d)}.work:before,.capture:before{content:"";display:block;height:3px;margin:-20px -22px 17px;background:linear-gradient(90deg,#2563eb,#79adff,transparent);opacity:.9}.quality{box-shadow:var(--shadow-3d)}
 .field input,.field select,.field textarea,.duration,.search{box-shadow:inset 0 2px 4px rgba(30,68,120,.05),0 2px 0 #fff}.field input:hover,.field select:hover,.field textarea:hover,.duration:hover,.search:hover{border-color:#8db5eb}.field input:focus,.field select:focus,.field textarea:focus{transform:translateY(-1px)}
 .entry{transition:background .16s ease,transform .16s ease;position:relative}.entry:hover{transform:translateX(3px);box-shadow:inset 4px 0 var(--blue)}.entry-icon{box-shadow:0 4px 9px rgba(37,99,235,.16)}
 .calendar,.weekly{box-shadow:var(--shadow-3d)}.days button{transition:transform .14s ease,box-shadow .14s ease}.days button:hover{transform:translateY(-2px);box-shadow:0 4px 8px rgba(37,99,235,.15)}.days button.today{box-shadow:0 5px 0 #164ba9,0 9px 15px rgba(37,99,235,.24)}
@@ -106,5 +106,5 @@ function flash(t){const e=document.createElement("div");e.textContent=t;Object.a
 <script src="./extra.js?v=20260907-25"></script>
 
 <script src="./auth-ui.js?v=20260907-5"></script>
-<script src="./stable-ui.js?v=20260908-37"></script>
+<script src="./stable-ui.js?v=20260908-38"></script>
 </body></html>
