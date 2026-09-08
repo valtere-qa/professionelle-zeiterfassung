@@ -383,6 +383,7 @@ test('Logout closes the profile menu and opens the login form immediately', asyn
   assert.ok(a.$('.auth-overlay'));
   assert.ok(a.$('#authEmail'));
   assert.ok(a.$('#authPassword'));
+  assert.equal(a.window.document.documentElement.classList.contains('auth-startup-locked'), true);
   assert.equal(a.$('.shell').classList.contains('auth-locked'), true);
   assert.equal(a.window.localStorage.getItem('professionelle-zeiterfassung.session'), null);
   assert.equal(a.window.localStorage.getItem('professionelle-zeiterfassung.logged-out'), '1');
