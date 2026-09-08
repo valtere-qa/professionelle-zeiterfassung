@@ -295,3 +295,16 @@ test('Calendar day click opens entries for the selected day', async t => {
   assert.doesNotMatch(a.$('#dynamic').textContent, /Anderer Tag/);
   assert.match(a.$('#dynamic').textContent, /Tagesbuchungen/);
 });
+
+test('Notes page follows the OneNote reference structure when empty', async t => {
+  const a = await app(t, '#notes');
+  assert.equal(a.$('.stable-notes-hero .eyebrow').textContent, 'Mini OneNote');
+  assert.match(a.$('.stable-notes-hero h2').textContent, /Notizbücher/);
+  assert.equal(a.$('#stableOneNoteExport').textContent.includes('OneNote exportieren'), true);
+  assert.equal(a.$('.stable-note-reference-tab').textContent, 'Alle Notizen');
+  assert.ok(a.$('.stable-note-reference-search'));
+  assert.ok(a.$('.stable-note-reference-category'));
+  assert.ok(a.$('.stable-note-reference-theme'));
+  assert.ok(a.$('.stable-notes-reference-empty'));
+  assert.match(a.$('#dynamic').textContent, /Noch keine Notiz ausgewählt/);
+});
