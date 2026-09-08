@@ -342,6 +342,15 @@ test('Week page renders the 3D weekly work overview with linked day cards', asyn
   assert.match(stable, /box-shadow:0 7px 0 #dce7f7/);
 });
 
+test('The complete app exposes the contemporary 3D surface system', async t => {
+  const a = await app(t, '#overview');
+  const css = readFileSync(resolve(publicDir, 'index.html'), 'utf8');
+  assert.match(css, /--shadow-3d:/);
+  assert.match(css, /\.btn\.primary\{background:linear-gradient\(145deg/);
+  assert.match(css, /\.metric:hover\{transform:translateY\(-3px\)/);
+  assert.equal(a.$('.nav [data-view="overview"]').classList.contains('active'), true);
+});
+
 test('Overview mini-calendar day click opens that day in entries', async t => {
   const a = await app(t, '#overview', {
     [STORE]: { entries: [
