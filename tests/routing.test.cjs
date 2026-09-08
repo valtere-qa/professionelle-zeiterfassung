@@ -325,6 +325,23 @@ test('Stats page renders the professional analytics dashboard', async t => {
   assert.equal(a.$('#statsPdf').textContent.includes('PDF-Bericht'), true);
 });
 
+test('Week page renders the 3D weekly work overview with linked day cards', async t => {
+  const a = await app(t, '#week', {
+    [STORE]: { entries: [
+      { date: '2026-09-08', minutes: 90, category: 'Organisation', project: 'Intern' },
+      { date: '2026-09-07', minutes: 30, category: 'Meeting', project: 'Intern' }
+    ], daily: '8h 00', weekly: '42h 00' }
+  });
+  assert.ok(a.$('.week-framework'));
+  assert.equal(a.$('.week-day-grid').querySelectorAll('.week-day-card').length, 7);
+  assert.equal(a.$('.week-day-card.is-active')?.dataset.weekDate, '2026-09-08');
+  assert.match(a.$('.week-total').textContent, /42h 00/);
+  assert.match(a.$('.week-bottom').textContent, /Wochensaldo/);
+  const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
+  assert.match(stable, /\.week-day-card\{appearance:none/);
+  assert.match(stable, /box-shadow:0 7px 0 #dce7f7/);
+});
+
 test('Overview mini-calendar day click opens that day in entries', async t => {
   const a = await app(t, '#overview', {
     [STORE]: { entries: [

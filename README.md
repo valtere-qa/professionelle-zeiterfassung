@@ -150,7 +150,7 @@ Ursache: `#dynamic` wurde unter allen weiterhin sichtbaren Übersichtskarten auf
 
 Die Übersicht hat jetzt einen eigenen Container `#overviewView`. Ein einziger Router schaltet diesen Container und `#dynamic` gegenseitig um. Ein gebündeltes Daten-Update bleibt auf der aktuellen Route; ausstehende Updates werden beim Ansichtenwechsel berücksichtigt. Der Tag-/Woche-Schalter verwendet jetzt alle Schaltflächen statt einer einzelnen DOM-Referenz.
 
-UI-Kennung dieser Änderung: `stable-ui.js?v=20260908-35` und `extra.js?v=20260907-25`. Die URL der veröffentlichten App ist [Professionelle Zeiterfassung](https://professionelle-zeiterfassung.vafa-qa-engineering.workers.dev/).
+UI-Kennung dieser Änderung: `stable-ui.js?v=20260908-36` und `extra.js?v=20260907-25`. Die URL der veröffentlichten App ist [Professionelle Zeiterfassung](https://professionelle-zeiterfassung.vafa-qa-engineering.workers.dev/).
 
 Tests lokal ausführen (Node.js 18 oder neuer):
 
@@ -161,9 +161,11 @@ npm test
 
 `tests/routing.test.cjs` führt die echte HTML-Datei mit allen eingebundenen App-Skripten in jsdom aus. Getestet werden alle zehn Reiter, Direktlinks, URL-Normalisierung, Browser-Verlauf, wiederholte Klicks, Notizentwürfe beim erneuten Öffnen desselben Reiters, „Zeit erfassen“, Daten-Aktualisierung, Tag-/Woche-Umschaltung und die Sichtbarkeit der Ansichten. Netzwerkanfragen sind simuliert; keine produktiven Daten werden verändert.
 
-Ergebnis am 8. September 2026: **34 Tests bestanden, 0 fehlgeschlagen**. Die mobile Navigation wird zusätzlich anhand ihrer CSS-Regeln und mit simulierten Abmessungen geprüft.
+Ergebnis am 8. September 2026: **35 Tests bestanden, 0 fehlgeschlagen**. Die mobile Navigation wird zusätzlich anhand ihrer CSS-Regeln und mit simulierten Abmessungen geprüft.
 
 Die Auswertung entspricht jetzt dem professionellen Dashboard-Aufbau: Zeitraumkopf, PDF-Aktion, sieben Kennzahlen, Wochenvergleich „Gebuchte Zeit vs. Tagessoll“ und Zeitverteilung nach Kategorie. Alle Werte werden aus den lokalen Buchungen berechnet und reagieren direkt auf Änderungen.
+
+Der Reiter „Woche“ zeigt die aktuelle Arbeitswoche mit Arbeitsrahmen, Tages-/Wochensoll, Ist-Zeit, Fortschrittsbalken, Wochensaldo und sieben anklickbaren Tageskarten. Die Karten verwenden eine dezente 3D-Tiefe und bleiben auf Mobilgeräten zweispaltig und touch-freundlich.
 
 Zusätzliche Live-Prüfung am 8. September 2026: Alle zehn Reiter wurden in der veröffentlichten Cloudflare-App angeklickt. Jeweils nur die ausgewählte Ansicht war sichtbar, und der URL-Hash stimmte überein. Browser-Zurück/-Vorwärts, „Zeit erfassen“ mit Fokus auf dem Leistungsfeld sowie der Wechsel aus einer gescrollten Übersicht zum Seitenanfang wurden ebenfalls erfolgreich geprüft. Die ausgelieferte HTML-Datei entspricht dem korrigierten Stand `bc972e0`.
 
