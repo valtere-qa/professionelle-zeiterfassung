@@ -150,7 +150,7 @@ Ursache: `#dynamic` wurde unter allen weiterhin sichtbaren Übersichtskarten auf
 
 Die Übersicht hat jetzt einen eigenen Container `#overviewView`. Ein einziger Router schaltet diesen Container und `#dynamic` gegenseitig um. Ein gebündeltes Daten-Update bleibt auf der aktuellen Route; ausstehende Updates werden beim Ansichtenwechsel berücksichtigt. Der Tag-/Woche-Schalter verwendet jetzt alle Schaltflächen statt einer einzelnen DOM-Referenz.
 
-UI-Kennung dieser Änderung: `stable-ui.js?v=20260907-27` und `extra.js?v=20260907-25`. Die URL der veröffentlichten App ist [Professionelle Zeiterfassung](https://professionelle-zeiterfassung.vafa-qa-engineering.workers.dev/).
+UI-Kennung dieser Änderung: `stable-ui.js?v=20260907-28` und `extra.js?v=20260907-25`. Die URL der veröffentlichten App ist [Professionelle Zeiterfassung](https://professionelle-zeiterfassung.vafa-qa-engineering.workers.dev/).
 
 Tests lokal ausführen (Node.js 18 oder neuer):
 
@@ -161,10 +161,12 @@ npm test
 
 `tests/routing.test.cjs` führt die echte HTML-Datei mit allen eingebundenen App-Skripten in jsdom aus. Getestet werden alle zehn Reiter, Direktlinks, URL-Normalisierung, Browser-Verlauf, wiederholte Klicks, Notizentwürfe beim erneuten Öffnen desselben Reiters, „Zeit erfassen“, Daten-Aktualisierung, Tag-/Woche-Umschaltung und die Sichtbarkeit der Ansichten. Netzwerkanfragen sind simuliert; keine produktiven Daten werden verändert.
 
-Ergebnis am 8. September 2026: **27 Tests bestanden, 0 fehlgeschlagen**. Die mobile Navigation wird zusätzlich anhand ihrer CSS-Regeln und mit simulierten Abmessungen geprüft.
+Ergebnis am 8. September 2026: **28 Tests bestanden, 0 fehlgeschlagen**. Die mobile Navigation wird zusätzlich anhand ihrer CSS-Regeln und mit simulierten Abmessungen geprüft.
 
 Zusätzliche Live-Prüfung am 8. September 2026: Alle zehn Reiter wurden in der veröffentlichten Cloudflare-App angeklickt. Jeweils nur die ausgewählte Ansicht war sichtbar, und der URL-Hash stimmte überein. Browser-Zurück/-Vorwärts, „Zeit erfassen“ mit Fokus auf dem Leistungsfeld sowie der Wechsel aus einer gescrollten Übersicht zum Seitenanfang wurden ebenfalls erfolgreich geprüft. Die ausgelieferte HTML-Datei entspricht dem korrigierten Stand `bc972e0`.
 
 Das Kalenderformular stellt alle Felder einheitlich dar: gut lesbare Labels, 44 px hohe Eingabefelder, klare Abstände und eine sauber ausgerichtete Erinnerungsauswahl. Das Feld `Erinnerung vorher (persönlich pro Eintrag)` verknüpft Zahl und Einheit per Label; `Minute(n)`, `Stunde(n)`, `Tag(e)` und `Woche(n)` bleiben auch auf kleinen Bildschirmen vollständig sichtbar.
+
+Die Kalenderübersicht verwendet eine kompakte Dichte: kleinere Tagesfelder, weniger Innenabstand und eine geringere Mindesthöhe für Monatsansicht und Agenda. Die Kalendernavigation und die Touch-Klickflächen bleiben erhalten.
 
 Testgrenzen: jsdom prüft DOM und Ereignisse, jedoch keine Pixelpositionen oder reale Touch-Bedienung. Die Live-Prüfung erfolgte im Desktop-Browser; reale mobile Touch-Geräte wurden nicht geprüft. Datenbank-, Authentifizierungs-, Export- und Erinnerungsfunktionen wurden mit diesem Routing-Test nicht vollständig abgenommen.

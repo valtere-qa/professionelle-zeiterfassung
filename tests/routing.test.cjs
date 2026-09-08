@@ -249,3 +249,12 @@ test('Calendar reminder controls show the personal per-entry label and remain us
   assert.match(stable, /\.stable-dialog \.field>label\{display:block/);
   assert.match(stable, /\.stable-reminder\{grid-template-columns:140px minmax\(0,1fr\);gap:12px/);
 });
+
+test('Calendar uses compact desktop dimensions while keeping the grid readable', async t => {
+  const a = await app(t, '#calendar');
+  const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
+  assert.match(stable, /\.stable-month,\.stable-agenda\{padding:16px;min-height:460px\}/);
+  assert.match(stable, /\.stable-day\{min-height:58px;padding:9px\}/);
+  assert.match(stable, /\.stable-empty-cal\{padding:78px 16px\}/);
+  assert.equal(a.$('[aria-label="Kalender"]').hidden, false);
+});
