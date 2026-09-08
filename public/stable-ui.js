@@ -33,6 +33,18 @@
     Object.assign(node.style,{position:"fixed",right:"18px",bottom:"85px",zIndex:1200,background:"#123263",color:"#fff",padding:"12px 16px",borderRadius:"10px",boxShadow:"0 8px 22px #12326355"});
     document.body.append(node); setTimeout(()=>node.remove(),2400);
   };
+  const notifyUser = (title, body) => {
+    toast(title+(body?" · "+body:""));
+    try { if(window.Notification&&window.Notification.permission==="granted") new window.Notification(title,{body}); } catch(error) { console.warn("Systembenachrichtigung nicht verfügbar.",error); }
+  };
+  const testNotifications = async () => {
+    if(!window.Notification){toast("Testbenachrichtigung angezeigt. Dieser Browser unterstützt keine Systembenachrichtigungen.");return;}
+    try {
+      const permission=window.Notification.permission==="granted"?"granted":await window.Notification.requestPermission();
+      if(permission==="granted"){notifyUser("Benachrichtigungen funktionieren","Dies ist eine Testbenachrichtigung.");checkReminders();}
+      else toast("Benachrichtigungen sind im Browser nicht freigegeben. Die App zeigt Erinnerungen weiterhin an.");
+    } catch(error) { console.warn("Benachrichtigungsberechtigung fehlgeschlagen.",error);toast("Testbenachrichtigung angezeigt. Bitte Browser-Berechtigungen prüfen."); }
+  };
   const confirmDelete = (title, details, onConfirm) => showModal(title,"<p>"+details+"</p><p class='stable-delete-warning'>Dieser Vorgang kann nicht rückgängig gemacht werden.</p>","Löschen",root=>{onConfirm();root.remove()});
   const addNamedItem = (kind, onDone) => {
     const labels={favorites:["Favorit hinzufügen","Name des Favoriten *"],category:["Kategorie hinzufügen","Name der Kategorie *"],project:["Projekt hinzufügen","Name des Projekts *"]};
@@ -160,7 +172,7 @@
     $("#calToday",p).onclick=()=>{cal.selected=today();cal.month=new Date(now.getFullYear(),now.getMonth(),1);draw()};
     $("#modeDay",p).onclick=()=>{cal.mode="day";$("#modeDay",p).classList.add("active");$("#modeWeek",p).classList.remove("active");draw()};
     $("#modeWeek",p).onclick=()=>{cal.mode="week";$("#modeWeek",p).classList.add("active");$("#modeDay",p).classList.remove("active");draw()};
-    $("#stableNotify",p).onclick=async()=>{if("Notification" in window){const permission=await Notification.requestPermission();toast(permission==="granted"?"Benachrichtigungen aktiviert.":"Benachrichtigungen nicht freigegeben.");checkReminders();}else toast("Dieser Browser unterstützt keine Benachrichtigungen.")};
+    $("#stableNotify",p).onclick=testNotifications;
     $("#stableIcs",p).onclick=()=>{const ics=events.map(x=>"BEGIN:VEVENT\\nSUMMARY:"+String(x.title||"").replace(/\\n/g," ")+"\\nDTSTART:"+String(x.date||"").replaceAll("-","")+"T"+String(x.start||"0900").replace(":","")+"00\\nEND:VEVENT").join("\\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["BEGIN:VCALENDAR\\nVERSION:2.0\\n"+ics+"\\nEND:VCALENDAR"],{type:"text/calendar"}));a.download="kalender.ics";a.click();toast("Kalender exportiert.")};
     openEditor=existing=>{
       const item=existing||{}, rawReminder=Number(item.reminder||60), currentUnit=item.reminderUnit||((rawReminder%10080===0)?"week":(rawReminder%1440===0)?"day":(rawReminder%60===0)?"hour":"minute"), currentValue=item.reminderValue!=null?Number(item.reminderValue):Math.max(0,rawReminder/reminderUnits[currentUnit].factor);
@@ -358,7 +370,7 @@
     current.forEach(event=>{
       const key=String(event.id)+"|"+event.date+"|"+(event.start||"");
       const due=Date.parse(event.date+"T"+(event.start||"09:00")+":00")-Number(event.reminder||0)*60000;
-      if(due<=now&&now-due<86400000&&!sent[key]){sent[key]=now;changed=true;if("Notification" in window&&Notification.permission==="granted")new Notification(event.title||"Kalender-Erinnerung",{body:(event.allDay?"Heute":(event.start||""))+(event.place?" · "+event.place:"")});}
+      if(due<=now&&now-due<86400000&&!sent[key]){sent[key]=now;changed=true;notifyUser(event.title||"Kalender-Erinnerung",(event.allDay?"Heute":(event.start||""))+(event.place?" · "+event.place:""));}
     });
     if(changed)save(REMINDER_STATE,sent);
     const count=current.filter(event=>Date.parse(event.date+"T"+(event.start||"09:00")+":00")>=now).length;const badge=$("#noticeCount");if(badge)badge.textContent=String(count);
