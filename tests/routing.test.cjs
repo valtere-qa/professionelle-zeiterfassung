@@ -281,3 +281,17 @@ test('Overview presents the compact professional dashboard with a decoded user n
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
   assert.match(stable, /#overviewView>\.work\{|\.metrics\{gap:10px;margin:0 0 20px/);
 });
+
+test('Calendar day click opens entries for the selected day', async t => {
+  const a = await app(t, '#calendar', {
+    [STORE]: { entries: [
+      { date: '2026-09-08', minutes: 90, category: 'Organisation', project: 'Intern', description: 'Ausgewählter Tag' },
+      { date: '2026-09-07', minutes: 30, category: 'Meeting', project: 'Intern', description: 'Anderer Tag' }
+    ] }
+  });
+  a.$('[data-date="2026-09-08"]').click();
+  assertView(a, 'entries');
+  assert.match(a.$('#dynamic').textContent, /Ausgewählter Tag/);
+  assert.doesNotMatch(a.$('#dynamic').textContent, /Anderer Tag/);
+  assert.match(a.$('#dynamic').textContent, /Tagesbuchungen/);
+});
