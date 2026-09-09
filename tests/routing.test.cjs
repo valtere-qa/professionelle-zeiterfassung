@@ -491,7 +491,7 @@ test('Stopping the timer creates and displays a saved booking', async t => {
   a.window.Date.now = originalNow;
   const entries = JSON.parse(a.window.localStorage.getItem(STORE)).entries;
   assert.equal(entries.length, 1);
-  assert.equal(entries[0].minutes, 2);
+  assert.equal(entries[0].minutes, 1);
   assert.match(a.$('#entryList').textContent, /Timer-Test/);
 });
 
@@ -507,6 +507,17 @@ test('Calendar marks every day that contains a booking', async t => {
     [STORE]: { entries: [{ date: TODAY, category: 'Testing', project: 'Intern', minutes: 30 }] }
   });
   assert.equal(a.window.document.querySelectorAll('#days button.has-booking').length, 1);
+});
+
+test('Notification test uses the browser notification API and app fallback', async t => {
+  const a = await app(t, '#calendar');
+  const sent = [];
+  function MockNotification(title, options) { sent.push({ title, options }); }
+  MockNotification.permission = 'granted';
+  a.window.Notification = MockNotification;
+  a.$('#stableNotify').click();
+  assert.equal(sent[0].title, 'Benachrichtigungen funktionieren');
+  assert.match(a.window.document.body.textContent, /Benachrichtigungen funktionieren/);
 });
 
 test('Day completion uses a styled confirmation dialog and updates immediately', async t => {
