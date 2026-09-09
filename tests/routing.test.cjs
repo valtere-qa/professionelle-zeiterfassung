@@ -286,11 +286,8 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.equal(a.$('.quality').hidden, false);
   assert.equal(a.$('.top h1').textContent.includes('Valtère'), true);
   assert.equal(a.$('.top h1').textContent.includes('%C3%A8'), false);
-  assert.equal(a.$('.page-header-title').textContent.includes('Professionelle Zeiterfassung'), true);
-  assert.ok(a.$('.page-header-title svg'));
-  assert.equal(a.$('.page-header-title svg').querySelectorAll('rect').length, 4);
   assert.match(a.$('link[rel="icon"]').getAttribute('href'), /^data:image\/svg\+xml,/);
-  assert.equal(a.$('.brand-mark'), null);
+  assert.equal(a.$('.page-header-title'), null);
   assert.equal(a.$('#timer').textContent.includes('Timer starten'), true);
   assert.equal(a.$('#csv').textContent.includes('CSV'), true);
   assert.equal(a.$('#pdf').textContent.includes('PDF'), true);
