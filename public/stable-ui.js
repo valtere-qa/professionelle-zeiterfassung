@@ -354,6 +354,13 @@
   };
   let timerStarted=0, timerInterval;
   const handleClick = e => {
+    const copyDay=e.target.closest("#copyDay");
+    if(copyDay&&!copyDay.disabled){
+      e.preventDefault();e.stopImmediatePropagation();
+      const d=state(),date=today(),sourceDates=[...new Set(d.entries.map(item=>item.date).filter(item=>item&&item<date))].sort(),sourceDate=sourceDates.at(-1),sourceEntries=sourceDate?d.entries.filter(item=>item.date===sourceDate):[];
+      if(!sourceEntries.length){showModal("Letzten Arbeitstag übernehmen","<p>Es wurde kein vorheriger Arbeitstag mit Buchungen gefunden.</p>","Schließen",root=>root.remove());return;}
+      showModal("Letzten Arbeitstag übernehmen","<p>Übernehme "+sourceEntries.length+" Buchung"+(sourceEntries.length===1?"":"en")+" vom "+new Date(sourceDate+"T12:00:00").toLocaleDateString("de-DE")+" in den heutigen Arbeitstag?</p>","Übernehmen",root=>{const copied=sourceEntries.map(item=>({...item,id:crypto.randomUUID(),date,time:item.time||new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})}));d.entries.push(...copied);save(STORE,d);root.remove();refreshOverview();toast(copied.length+" Buchung"+(copied.length===1?"":"en")+" übernommen.")});return;
+    }
     const closeDay=e.target.closest("#closeDay");
     if(closeDay&&!closeDay.disabled){
       e.preventDefault();e.stopImmediatePropagation();const d=state(),date=today(),closed=Array.isArray(d.closedDays)&&d.closedDays.includes(date);

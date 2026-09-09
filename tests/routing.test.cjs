@@ -532,6 +532,19 @@ test('Day completion uses a styled confirmation dialog and updates immediately',
   assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).closedDays[0], TODAY);
 });
 
+test('Copy last workday opens a confirmation dialog and copies bookings to today', async t => {
+  const previous = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const a = await app(t, '#overview', { [STORE]: { entries: [{ date: previous, minutes: 45, category: 'Testing', project: 'Intern', description: 'Vorheriger Tag' }] } });
+  a.$('#copyDay').click();
+  assert.ok(a.$('.stable-dialog'));
+  assert.match(a.$('.stable-dialog').textContent, /Letzten Arbeitstag übernehmen/);
+  a.$('.stable-save').click();
+  const entries = JSON.parse(a.window.localStorage.getItem(STORE)).entries;
+  assert.equal(entries.length, 2);
+  assert.equal(entries.at(-1).date, TODAY);
+  assert.equal(entries.at(-1).description, 'Vorheriger Tag');
+});
+
 test('Profile submenu shows only valid authentication actions when signed out', async t => {
   const a = await app(t, '#overview');
   a.$('.profile').click();
