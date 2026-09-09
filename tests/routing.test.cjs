@@ -554,6 +554,16 @@ test('Copy last workday is enabled and copies bookings to today immediately', as
   assert.match(a.$('#copyDayStatus').textContent, /8\.9\.2026/);
 });
 
+test('Toast messages are always positioned at the top', async t => {
+  const a = await app(t, '#overview');
+  a.$('#copyDay').click();
+  const notice = a.$('.stable-toast');
+  assert.ok(notice);
+  assert.equal(notice.style.top, '18px');
+  assert.equal(notice.style.bottom, '');
+  assert.equal(notice.getAttribute('role'), 'status');
+});
+
 test('Profile submenu shows only valid authentication actions when signed out', async t => {
   const a = await app(t, '#overview');
   a.$('.profile').click();
