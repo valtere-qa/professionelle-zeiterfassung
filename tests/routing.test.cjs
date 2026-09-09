@@ -549,6 +549,8 @@ test('Copy last workday is enabled and copies bookings to today immediately', as
   assert.equal(entries.length, 2);
   assert.equal(entries.at(-1).date, TODAY);
   assert.equal(entries.at(-1).description, 'Vorheriger Tag');
+  assert.equal(a.$('#qualityCard').classList.contains('quality-ready'), true);
+  assert.equal(a.$('#qualityCard').classList.contains('quality-empty'), false);
   assert.match(a.$('#copyDayStatus').textContent, /8\.9\.2026/);
 });
 
