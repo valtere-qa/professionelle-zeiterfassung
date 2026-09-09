@@ -627,3 +627,41 @@ test('Overview mini-calendar day click opens that day in entries', async t => {
   assert.match(a.$('#dynamic').textContent, /Heute/);
   assert.doesNotMatch(a.$('#dynamic').textContent, /Kalendertag/);
 });
+
+test('Calendar day click opens the exact selected date without timezone shift', async t => {
+  const a = await app(t, '#calendar', {
+    [STORE]: { entries: [
+      { date: '2026-09-08', minutes: 30, category: 'Meeting', project: 'Intern', description: 'Vortag' },
+      { date: '2026-09-09', minutes: 45, category: 'Testing', project: 'Intern', description: 'Ausgewählter Tag' }
+    ] }
+  });
+  const day = a.$('#stableGrid [data-date="2026-09-09"]');
+  assert.ok(day, 'Stable calendar day button exists');
+  day.click();
+  await tick();
+  assertView(a, 'entries');
+  assert.match(a.$('#dynamic').textContent, /Ausgewählter Tag/);
+  assert.doesNotMatch(a.$('#dynamic').textContent, /Vortag/);
+});
+
+test('Clicking a weekly stats bar opens that exact day in entries', async t => {
+  const monday = new Date(TODAY + 'T12:00:00');
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  const dayKey = date => date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+  const mondayKey = dayKey(monday);
+  const tuesday = new Date(monday);
+  tuesday.setDate(tuesday.getDate() + 1);
+  const a = await app(t, '#stats', {
+    [STORE]: { entries: [
+      { date: mondayKey, minutes: 60, category: 'Testing', project: 'Intern', description: 'Montag-Buchung' },
+      { date: dayKey(tuesday), minutes: 30, category: 'Meeting', project: 'Intern', description: 'Dienstag-Buchung' }
+    ] }
+  });
+  const bar = a.$('.stats-bar-col[data-stats-date="' + mondayKey + '"]');
+  assert.ok(bar, 'Monday stats bar exists');
+  bar.click();
+  await tick();
+  assertView(a, 'entries');
+  assert.match(a.$('#dynamic').textContent, /Montag-Buchung/);
+  assert.doesNotMatch(a.$('#dynamic').textContent, /Dienstag-Buchung/);
+});

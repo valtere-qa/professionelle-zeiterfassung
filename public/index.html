@@ -88,13 +88,13 @@ h3{font-size:14px!important}
 .quality.quality-closed .eyebrow,.quality.quality-closed #qualityTitle{color:var(--green)!important}
 .quality-copy-status{margin-top:4px!important;font-weight:600}
 </style>
-<style>.auth-startup-locked .shell{display:none!important}</style>
+<style>.auth-startup-locked .shell{display:none!important}.brand-mark{display:grid;place-items:center;border:0!important;background:linear-gradient(145deg,#3280f3,#1556cf);box-shadow:0 7px 0 #0e3d9a,0 10px 18px rgba(37,99,235,.25)}.brand-mark:after{display:none}.brand-mark svg{width:27px;height:27px;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.brand b{line-height:1.12;max-width:170px}.stats-bar-col{appearance:none;border:0;background:transparent;font:inherit;padding:0;cursor:pointer;border-radius:8px;transition:background .16s ease,transform .16s ease}.stats-bar-col:hover{background:#f4f8ff;transform:translateY(-2px)}.stats-bar-col:focus-visible{outline:2px solid var(--blue);outline-offset:3px}.stats-bar-col:hover .stats-bar-track i{filter:brightness(1.08)}</style>
 <script>try{if(localStorage.getItem('professionelle-zeiterfassung.logged-out'))document.documentElement.classList.add('auth-startup-locked')}catch(error){}</script>
 </head>
 <body>
 <div class="shell">
 <aside class="sidebar">
-  <div class="brand"><div class="brand-mark"></div><div><b>Zeiterfassung</b><small>Selbstorganisation</small></div></div>
+  <div class="brand"><div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7v5l3 2"></path></svg></div><div><b>Professionelle Zeiterfassung</b><small>Selbstorganisation</small></div></div>
   <nav class="nav" aria-label="Hauptnavigation">
     <button class="active" data-view="overview"><i>⌂</i>Übersicht</button><button data-view="entries"><i>◷</i>Einträge</button><button data-view="week"><i>▦</i>Woche</button><button data-view="stats"><i>▥</i>Auswertung</button><button data-view="calendar"><i>▣</i>Kalender</button><button data-view="notes"><i>☷</i>Notizen</button><button data-view="categories"><i>◇</i>Kategorien</button><button data-view="favorites"><i>☆</i>Favoriten</button><button data-view="settings"><i>⚙</i>Einstellungen</button><button data-view="help"><i>?</i>Hilfe</button>
   </nav>
@@ -129,6 +129,6 @@ function flash(t){const e=document.createElement("div");e.textContent=t;Object.a
 <script src="./extra.js?v=20260908-29"></script>
 
 <script src="./auth-ui.js?v=20260908-13"></script>
-<script src="./stable-ui.js?v=20260908-71"></script>
+<script src="./stable-ui.js?v=20260908-72"></script>
 <script src="./apple-icons.js?v=20260908-1"></script>
 </body></html>
