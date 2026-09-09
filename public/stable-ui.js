@@ -9,6 +9,7 @@
   };
   const $ = (s,r=document) => r.querySelector(s);
   const $$ = (s,r=document) => [...r.querySelectorAll(s)];
+  const bookingCalendarStyle=document.createElement("style");bookingCalendarStyle.textContent=`.stable-day.has-booking{border-color:#35a878;background:#eaf8f1;color:#107c10;box-shadow:inset 0 -4px 0 #35a878}.stable-day.has-booking.selected{background:#6264a7;border-color:#6264a7;color:#fff;box-shadow:inset 0 -4px 0 #35a878,0 2px 6px rgba(0,0,0,.16)}.days button.has-booking{background:#eaf8f1;color:#107c10;box-shadow:inset 0 -3px 0 #35a878}.days button.has-booking.today{background:#1464d2;color:#fff;box-shadow:inset 0 -3px 0 #0d4eaa,0 4px 8px rgba(37,99,235,.18)}`;document.head.append(bookingCalendarStyle);
   const state = () => Object.assign({}, defaults, JSON.parse(localStorage.getItem(STORE) || "{}"));
   const read = (key, fallback) => JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
   const save = (key, value) => localStorage.setItem(key, JSON.stringify(value));
@@ -19,6 +20,7 @@
   const updateCalendar=async item=>{if(!api()?.hasSession?.()||!item?.id)return;try{const remote=await api().update("calendar",item.id,calendarPayload(item));if(remote?.id)save(CALENDAR,read(CALENDAR,[]));}catch(error){console.warn("Kalender lokal aktualisiert; D1-Synchronisierung ausstehend.",error);}};
   const removeCalendar=async item=>{if(!api()?.hasSession?.()||!item?.id)return;try{await api().remove("calendar",item.id);}catch(error){console.warn("Kalender lokal gelöscht; D1-Löschung ausstehend.",error);}};
   const today = () => new Date().toISOString().slice(0,10);
+  const namedLabel = value => typeof value === "string" ? value : String(value?.name||value?.label||"");
   const escapeHtml = value => String(value ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const minutes = value => {
     const s=String(value||"").replace(",",".");
@@ -93,6 +95,7 @@
     const title=$("#qualityTitle"), text=$("#qualityText"), close=$("#closeDay"), closed=Array.isArray(d.closedDays)&&d.closedDays.includes(today());if(title)title.textContent=closed?"Tag abgeschlossen":total?"Bereit zum Abschluss":"Prüfung erforderlich";if(text)text.textContent=closed?"Die Buchungen sind vor unbeabsichtigten Änderungen geschützt.":total?"Zeit wurde erfasst und kann abgeschlossen werden.":"Für diesen Arbeitstag ist noch keine Zeit erfasst.";if(close){close.disabled=!total;close.textContent=closed?"▣ Tag wieder öffnen":"▣ Tag abschliessen";}
     const list=$("#entryList");
     if(list){
+      const projectSelect=$("#project");if(projectSelect){const selected=projectSelect.value;projectSelect.innerHTML=(d.projects||[]).map(x=>"<option value='"+escapeHtml(namedLabel(x))+"'>"+escapeHtml(namedLabel(x))+"</option>").join("");if([...projectSelect.options].some(o=>o.value===selected))projectSelect.value=selected;}
       const q=($("#search")?.value||"").toLowerCase();
       const filteredRows=todayEntries.filter(e=>[e.category,e.project,e.description,e.notes].join(" ").toLowerCase().includes(q));
       const totalPages=Math.max(1,Math.ceil(filteredRows.length/ENTRY_PAGE_SIZE));
@@ -102,6 +105,7 @@
       list.innerHTML=rows.length?rows.map(e=>"<div class='entry'><div class='entry-icon'>◷</div><div><b>"+escapeHtml(e.category)+" · "+escapeHtml(e.project)+"</b><small>"+escapeHtml(e.description||"Keine Beschreibung")+(e.notes?" · "+escapeHtml(e.notes):"")+"</small></div><div class='time'>"+format(e.minutes)+"<small>"+escapeHtml(e.time||"")+"</small></div><div class='entry-actions'><button class='delete' data-entry-edit='"+e._i+"' aria-label='Buchung bearbeiten' title='Buchung bearbeiten'>✎</button><button class='delete' data-entry-delete='"+e._i+"' aria-label='Buchung löschen' title='Buchung löschen'>×</button></div></div>").join(""):"<div class='clock'>◷</div><b>Noch keine Zeit gebucht</b><p>Erfasse oben deine erste Leistung.</p>";
       $$('.entry',list).forEach((row,index)=>{const icon=$(".entry-icon",row);if(icon)icon.classList.add("entry-color-"+(index%4));});
       enhanceOverviewRows(list,d);
+      const monthLabel=$("#month")?.textContent||"", monthMatch=monthLabel.match(/^(\S+)\s+(\d{4})$/), monthNames=["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];if(monthMatch){const monthIndex=monthNames.indexOf(monthMatch[1]),year=Number(monthMatch[2]),booked=new Set(d.entries.map(e=>e.date));$$("#days button").forEach(button=>{const day=Number(button.textContent);if(day&&monthIndex>=0)button.classList.toggle("has-booking",booked.has(new Date(year,monthIndex,day).toISOString().slice(0,10)));});}
       $$('[data-entry-edit]',list).forEach(button=>button.onclick=()=>editEntry(Number(button.dataset.entryEdit),refreshOverview));
       $$('[data-entry-delete]',list).forEach(button=>button.onclick=()=>{const item=d.entries[Number(button.dataset.entryDelete)];if(item)confirmDelete("Buchung löschen",escapeHtml(item.category||"Buchung")+" · "+escapeHtml(item.project||""),()=>{d.entries.splice(Number(button.dataset.entryDelete),1);save(STORE,d);refreshOverview();toast("Buchung gelöscht.")})});
       const pagination=$("#entryPagination");
@@ -159,10 +163,10 @@
     p.innerHTML="<div class='stable-cal-head'><div><div class='eyebrow'>Persönlicher Kalender</div><h2>Termine, Aufgaben & Geburtstage</h2><p>Alles lokal geplant und mit rechtzeitiger Erinnerung.</p></div><div class='stable-cal-notice'><b>Browser- & Smartphone-<br>Benachrichtigungen aktiv</b><small>Für Erinnerungen bei geschlossener App in Outlook, Teams oder den Gerätekalender übernehmen.</small></div><div class='stable-cal-actions'><button class='btn' id='stableIcs'>⇩ Outlook / Teams / Gerät</button><button class='btn' id='stableNotify'>♧ Benachrichtigungen testen</button><button class='btn primary' id='newStableCal'>＋ Neuer Eintrag</button></div></div><div class='stable-cal-layout'><section class='card stable-month'><div class='stable-month-head'><button class='btn' id='calPrev'>‹</button><div><h2 id='calTitle'></h2><button class='btn' id='calToday'>Heute</button></div><button class='btn' id='calNext'>›</button></div><div class='stable-weekdays'>"+weekdays.map(x=>"<b>"+x+"</b>").join("")+"</div><div id='stableGrid' class='stable-grid'></div></section><section class='card stable-agenda'><div class='stable-agenda-head'><div><div class='eyebrow'>Agenda</div><h2 id='stableAgendaTitle'></h2></div><div class='seg'><button id='modeDay' class='active'>Tag</button><button id='modeWeek'>Woche</button></div></div><div id='stableAgenda'></div></section></div>";
     let openEditor;
     const draw=()=>{
-      const y=cal.month.getFullYear(), m=cal.month.getMonth(), first=(new Date(y,m,1).getDay()+6)%7, last=new Date(y,m+1,0).getDate(), grid=$("#stableGrid",p);
+      const y=cal.month.getFullYear(), m=cal.month.getMonth(), first=(new Date(y,m,1).getDay()+6)%7, last=new Date(y,m+1,0).getDate(), grid=$("#stableGrid",p), bookedDates=new Set(state().entries.map(e=>e.date));
       $("#calTitle",p).textContent=months[m]+" "+y; grid.innerHTML="";
       for(let i=0;i<first;i++) grid.insertAdjacentHTML("beforeend","<button class='stable-day muted' aria-hidden='true'></button>");
-      for(let day=1;day<=last;day++){const date=key(y,m,day), count=events.filter(x=>x.date===date).length, cls=date===cal.selected?" selected":date===today()?" today":"";
+      for(let day=1;day<=last;day++){const date=key(y,m,day), count=events.filter(x=>x.date===date).length, cls=(date===cal.selected?" selected":date===today()?" today":"")+(bookedDates.has(date)?" has-booking":"");
         grid.insertAdjacentHTML("beforeend","<button class='stable-day"+cls+"' data-date='"+date+"'><strong>"+day+"</strong>"+(count?"<small>"+count+" "+(count===1?"Eintrag":"Einträge")+"</small>":"")+"</button>");}
       $("#stableAgendaTitle",p).textContent=label(cal.selected);
       const selected=new Date(cal.selected+"T12:00:00"), end=new Date(selected); end.setDate(end.getDate()+(cal.mode==="week"?6:0));

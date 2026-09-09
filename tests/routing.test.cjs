@@ -8,6 +8,7 @@ const publicDir = resolve(__dirname, '../public');
 const html = readFileSync(resolve(publicDir, 'index.html'), 'utf8');
 const STORE = 'professionelle-zeiterfassung.v2';
 const NOTES = 'professionelle-zeiterfassung.notes.v1';
+const TODAY = new Date().toISOString().slice(0, 10);
 const routes = {
   overview: 'Übersicht', entries: 'Einträge', week: 'Woche', stats: 'Auswertung',
   calendar: 'Kalender', notes: 'Notizen', categories: 'Kategorien',
@@ -366,7 +367,7 @@ test('Week page renders the 3D weekly work overview with linked day cards', asyn
   });
   assert.ok(a.$('.week-framework'));
   assert.equal(a.$('.week-day-grid').querySelectorAll('.week-day-card').length, 7);
-  assert.equal(a.$('.week-day-card.is-active')?.dataset.weekDate, '2026-09-08');
+  assert.equal(a.$('.week-day-card.is-active')?.dataset.weekDate, TODAY);
   assert.match(a.$('.week-total').textContent, /42h 00/);
   assert.match(a.$('.week-bottom').textContent, /Wochensaldo/);
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
@@ -464,7 +465,7 @@ test('Adding an entry shows a red required-field error and focuses the missing f
 
 test('Daily bookings render a duplicate action per row and persist the copy', async t => {
   const a = await app(t, '#overview', {
-    [STORE]: { entries: [{ id: 'entry-1', date: '2026-09-08', category: 'Testing', project: 'Intern', minutes: 90 }] }
+    [STORE]: { entries: [{ id: 'entry-1', date: TODAY, category: 'Testing', project: 'Intern', minutes: 90 }] }
   });
   const duplicate = a.$('#entryList [data-entry-duplicate]');
   assert.ok(duplicate, 'daily booking row has a duplicate action');
@@ -494,8 +495,22 @@ test('Stopping the timer creates and displays a saved booking', async t => {
   assert.match(a.$('#entryList').textContent, /Timer-Test/);
 });
 
+test('Project dropdown displays object-backed projects by name', async t => {
+  const a = await app(t, '#overview', {
+    [STORE]: { projects: [{ name: 'Projekt 1' }, { name: 'Projekt 2' }], entries: [] }
+  });
+  assert.deepEqual([...a.$('#project').options].map(option => option.textContent), ['Projekt 1', 'Projekt 2']);
+});
+
+test('Calendar marks every day that contains a booking', async t => {
+  const a = await app(t, '#overview', {
+    [STORE]: { entries: [{ date: TODAY, category: 'Testing', project: 'Intern', minutes: 30 }] }
+  });
+  assert.equal(a.window.document.querySelectorAll('#days button.has-booking').length, 1);
+});
+
 test('Day completion uses a styled confirmation dialog and updates immediately', async t => {
-  const a = await app(t, '#overview', { [STORE]: { entries: [{ date: '2026-09-08', minutes: 30, category: 'Testing', project: 'Intern' }] } });
+  const a = await app(t, '#overview', { [STORE]: { entries: [{ date: TODAY, minutes: 30, category: 'Testing', project: 'Intern' }] } });
   const close = a.$('#closeDay');
   assert.equal(close.disabled, false);
   close.click();
@@ -503,7 +518,7 @@ test('Day completion uses a styled confirmation dialog and updates immediately',
   assert.match(a.$('.stable-dialog').textContent, /Arbeitstag abschließen/);
   a.$('.stable-save').click();
   assert.match(a.$('#qualityTitle').textContent, /Tag abgeschlossen/);
-  assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).closedDays[0], '2026-09-08');
+  assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).closedDays[0], TODAY);
 });
 
 test('Profile submenu shows only valid authentication actions when signed out', async t => {
