@@ -153,7 +153,7 @@ Ursache: `#dynamic` wurde unter allen weiterhin sichtbaren Übersichtskarten auf
 
 Die Übersicht hat jetzt einen eigenen Container `#overviewView`. Ein einziger Router schaltet diesen Container und `#dynamic` gegenseitig um. Ein gebündeltes Daten-Update bleibt auf der aktuellen Route; ausstehende Updates werden beim Ansichtenwechsel berücksichtigt. Der Tag-/Woche-Schalter verwendet jetzt alle Schaltflächen statt einer einzelnen DOM-Referenz.
 
-UI-Kennung dieser Änderung: `stable-ui.js?v=20260908-68`, `auth-ui.js?v=20260908-13`, `extra.js?v=20260908-29` und `apple-icons.js?v=20260908-1`. Die URL der veröffentlichten App ist [Professionelle Zeiterfassung](https://professionelle-zeiterfassung.vafa-qa-engineering.workers.dev/).
+UI-Kennung dieser Änderung: `stable-ui.js?v=20260908-69`, `auth-ui.js?v=20260908-13`, `extra.js?v=20260908-29` und `apple-icons.js?v=20260908-1`. Die URL der veröffentlichten App ist [Professionelle Zeiterfassung](https://professionelle-zeiterfassung.vafa-qa-engineering.workers.dev/).
 
 Tests lokal ausführen (Node.js 18 oder neuer):
 

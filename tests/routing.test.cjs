@@ -530,6 +530,14 @@ test('Day completion uses a styled confirmation dialog and updates immediately',
   a.$('.stable-save').click();
   assert.match(a.$('#qualityTitle').textContent, /Tag abgeschlossen/);
   assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).closedDays[0], TODAY);
+  assert.equal(a.$('#copyDay').disabled, true);
+  assert.equal(a.$('#addEntry').disabled, true);
+  assert.equal(a.$('[data-entry-edit]').disabled, true);
+  a.$('#closeDay').click();
+  assert.match(a.$('.stable-dialog').textContent, /wieder öffnen/);
+  a.$('.stable-save').click();
+  assert.equal(a.$('#addEntry').disabled, false);
+  assert.equal(a.$('[data-entry-edit]').disabled, false);
 });
 
 test('Copy last workday is enabled and copies bookings to today immediately', async t => {
@@ -541,6 +549,7 @@ test('Copy last workday is enabled and copies bookings to today immediately', as
   assert.equal(entries.length, 2);
   assert.equal(entries.at(-1).date, TODAY);
   assert.equal(entries.at(-1).description, 'Vorheriger Tag');
+  assert.match(a.$('#copyDayStatus').textContent, /8\.9\.2026/);
 });
 
 test('Profile submenu shows only valid authentication actions when signed out', async t => {
