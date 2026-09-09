@@ -122,7 +122,7 @@
     set("todayTotal",format(total)); set("entrySum","Gesamt: "+format(total)); set("weekTotal",format(all));
     const dailyTarget=minutes(d.daily)||480, balance=total-dailyTarget; set("balance",(balance>=0?"+":"−")+format(Math.abs(balance)));
     const bar=$("#weekBar");if(bar)bar.style.width=Math.min(100,total/Math.max(1,minutes(d.weekly)||2400)*100)+"%";
-    const title=$("#qualityTitle"), text=$("#qualityText"), close=$("#closeDay"), closed=Array.isArray(d.closedDays)&&d.closedDays.includes(today());if(title)title.textContent=closed?"Tag abgeschlossen":total?"Bereit zum Abschluss":"Prüfung erforderlich";if(text)text.textContent=closed?"Die Buchungen sind vor unbeabsichtigten Änderungen geschützt.":total?"Zeit wurde erfasst und kann abgeschlossen werden.":"Für diesen Arbeitstag ist noch keine Zeit erfasst.";if(close){close.disabled=!total;close.textContent=closed?"▣ Tag wieder öffnen":"▣ Tag abschliessen";}
+      const title=$("#qualityTitle"), text=$("#qualityText"), close=$("#closeDay"), copy=$("#copyDay"), closed=Array.isArray(d.closedDays)&&d.closedDays.includes(today());if(title)title.textContent=closed?"Tag abgeschlossen":total?"Bereit zum Abschluss":"Prüfung erforderlich";if(text)text.textContent=closed?"Die Buchungen sind vor unbeabsichtigten Änderungen geschützt.":total?"Zeit wurde erfasst und kann abgeschlossen werden.":"Für diesen Arbeitstag ist noch keine Zeit erfasst.";if(close){close.disabled=!total;close.textContent=closed?"▣ Tag wieder öffnen":"▣ Tag abschliessen";}if(copy){copy.disabled=false;copy.removeAttribute("aria-disabled");}
     const list=$("#entryList");
     if(list){
       const projectSelect=$("#project");if(projectSelect){const selected=projectSelect.value;projectSelect.innerHTML=(d.projects||[]).map(x=>"<option value='"+escapeHtml(namedLabel(x))+"'>"+escapeHtml(namedLabel(x))+"</option>").join("");if([...projectSelect.options].some(o=>o.value===selected))projectSelect.value=selected;}
@@ -357,9 +357,9 @@
     const copyDay=e.target.closest("#copyDay");
     if(copyDay&&!copyDay.disabled){
       e.preventDefault();e.stopImmediatePropagation();
-      const d=state(),date=today(),sourceDates=[...new Set(d.entries.map(item=>item.date).filter(item=>item&&item<date))].sort(),sourceDate=sourceDates.at(-1),sourceEntries=sourceDate?d.entries.filter(item=>item.date===sourceDate):[];
-      if(!sourceEntries.length){showModal("Letzten Arbeitstag übernehmen","<p>Es wurde kein vorheriger Arbeitstag mit Buchungen gefunden.</p>","Schließen",root=>root.remove());return;}
-      showModal("Letzten Arbeitstag übernehmen","<p>Übernehme "+sourceEntries.length+" Buchung"+(sourceEntries.length===1?"":"en")+" vom "+new Date(sourceDate+"T12:00:00").toLocaleDateString("de-DE")+" in den heutigen Arbeitstag?</p>","Übernehmen",root=>{const copied=sourceEntries.map(item=>({...item,id:crypto.randomUUID(),date,time:item.time||new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})}));d.entries.push(...copied);save(STORE,d);root.remove();refreshOverview();toast(copied.length+" Buchung"+(copied.length===1?"":"en")+" übernommen.")});return;
+      const d=state(),date=$("#workDate")?.value||today(),sourceDates=[...new Set(d.entries.map(item=>item.date).filter(item=>item&&item<date))].sort(),sourceDate=sourceDates.at(-1),sourceEntries=sourceDate?d.entries.filter(item=>item.date===sourceDate):[];
+      if(!sourceEntries.length){toast("Keine Buchungen des vorherigen Arbeitstags gefunden.");return;}
+      const copied=sourceEntries.map(item=>({...item,id:crypto.randomUUID(),date,time:item.time||new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})}));d.entries.push(...copied);save(STORE,d);refreshOverview();toast(copied.length+" Buchung"+(copied.length===1?"":"en")+" vom "+new Date(sourceDate+"T12:00:00").toLocaleDateString("de-DE")+" übernommen.");return;
     }
     const closeDay=e.target.closest("#closeDay");
     if(closeDay&&!closeDay.disabled){
