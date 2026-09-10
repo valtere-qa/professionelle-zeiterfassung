@@ -556,7 +556,7 @@ test('Copy last workday is enabled and copies bookings to today immediately', as
   assert.equal(entries.at(-1).description, 'Vorheriger Tag');
   assert.equal(a.$('#qualityCard').classList.contains('quality-ready'), true);
   assert.equal(a.$('#qualityCard').classList.contains('quality-empty'), false);
-  assert.match(a.$('#copyDayStatus').textContent, /8\.9\.2026/);
+  assert.ok(a.$('#copyDayStatus').textContent.includes(new Date(previous + 'T12:00:00').toLocaleDateString('de-DE')));
 });
 
 test('Toast messages are always positioned at the top', async t => {
@@ -669,4 +669,36 @@ test('Clicking a weekly stats bar opens that exact day in entries', async t => {
   assertView(a, 'entries');
   assert.match(a.$('#dynamic').textContent, /Montag-Buchung/);
   assert.doesNotMatch(a.$('#dynamic').textContent, /Dienstag-Buchung/);
+});
+
+test('Absence dates are greyed out and block time capture', async t => {
+  const a = await app(t, '#overview', {
+    [STORE]: { entries: [], daily: '8h 30', absences: [{ id: 'absence-1', type: 'Ferien', start: TODAY, end: TODAY }] }
+  });
+  assert.equal(a.$('#addEntry').disabled, true);
+  assert.equal(a.$('#timer').disabled, true);
+  assert.match(a.$('#qualityTitle').textContent, /Ferien/);
+  assert.equal(a.$('#absenceHint').hidden, false);
+  assert.ok(a.$('#days button.absence-day'));
+});
+
+test('Stable calendar marks absence dates and explains that no booking is needed', async t => {
+  const a = await app(t, '#calendar', {
+    [STORE]: { entries: [], absences: [{ id: 'absence-2', type: 'Krankheit', start: TODAY, end: TODAY }] }
+  });
+  const day = a.$('#stableGrid [data-date="' + TODAY + '"]');
+  assert.ok(day?.classList.contains('absence-day'));
+  assert.match(day.textContent, /Krankheit/);
+  assert.match(a.$('#stableAgenda').textContent, /keine Zeitbuchung erforderlich/i);
+});
+
+test('Daily target accepts hours and minutes and saves per-weekday settings', async t => {
+  const a = await app(t, '#overview', { [STORE]: { entries: [], daily: '8h 30', weekly: '42h 00' } });
+  assert.equal(a.$('#daily').value, '8h 30');
+  assert.match(a.$('#balance').textContent, /8h 30/);
+  a.click('settings');
+  const monday = a.$('.stable-day-input[data-day="Mo"]');
+  monday.value = '8h 30';
+  monday.dispatchEvent(new a.window.Event('change', { bubbles: true }));
+  assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).weekdayTargets.Mo, '8h 30');
 });
