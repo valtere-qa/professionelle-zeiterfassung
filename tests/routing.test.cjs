@@ -723,3 +723,25 @@ test('Overview can select another date and save a booking for that date', async 
   const entries = JSON.parse(a.window.localStorage.getItem(STORE)).entries;
   assert.equal(entries[0].date, other);
 });
+
+test('Entries view can select another date and start a booking for that date', async t => {
+  const other = '2026-09-09';
+  const a = await app(t, '#entries', {
+    [STORE]: { entries: [
+      { date: TODAY, minutes: 30, category: 'Testing', project: 'Intern', description: 'Heute' },
+      { date: other, minutes: 60, category: 'Meeting', project: 'Intern', description: 'Anderer Tag' }
+    ] }
+  });
+  const datePicker = a.$('#stableEntriesDate');
+  assert.ok(datePicker, 'Entries view exposes a date picker');
+  datePicker.value = other;
+  datePicker.dispatchEvent(new a.window.Event('change', { bubbles: true }));
+  assert.match(a.$('.stable-section-head').textContent, /09\.09\.2026|9\.9\.2026/);
+  assert.match(a.$('#stableRows').textContent, /Anderer Tag/);
+  assert.doesNotMatch(a.$('#stableRows').textContent, /Heute/);
+  a.$('#stableCaptureEntry').click();
+  await tick();
+  assertView(a, 'overview');
+  assert.equal(a.$('#workDate').value, other);
+  assert.equal(a.window.localStorage.getItem('professionelle-zeiterfassung.selected-entry-date'), other);
+});
