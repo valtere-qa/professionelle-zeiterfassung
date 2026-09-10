@@ -649,6 +649,29 @@ test('Calendar day click opens the exact selected date without timezone shift', 
   assert.doesNotMatch(a.$('#dynamic').textContent, /Vortag/);
 });
 
+test('Calendar day without a booking does not open the entries view', async t => {
+  const a = await app(t, '#calendar', {
+    [STORE]: { entries: [] }
+  });
+  const day = a.$('#stableGrid [data-date="2026-09-09"]');
+  assert.ok(day, 'Stable calendar day exists');
+  day.click();
+  await tick();
+  assertView(a, 'calendar');
+});
+
+test('Overview mini-calendar day without a booking keeps the overview open', async t => {
+  const a = await app(t, '#overview', {
+    [STORE]: { entries: [{ date: TODAY, minutes: 30, category: 'Testing', project: 'Intern' }] }
+  });
+  const emptyDay = [...a.window.document.querySelectorAll('#days button:not(.muted)')]
+    .find(button => button.textContent.trim() === '9');
+  assert.ok(emptyDay, 'Overview calendar day exists');
+  emptyDay.click();
+  await tick();
+  assertView(a, 'overview');
+});
+
 test('Clicking a weekly stats bar opens that exact day in entries', async t => {
   const monday = new Date(TODAY + 'T12:00:00');
   monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
