@@ -29,14 +29,67 @@
   const namedLabel = value => typeof value === "string" ? value : String(value?.name||value?.label||"");
   const escapeHtml = value => String(value ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const minutes = value => {
-    const s=String(value||"").replace(",",".");
-    const clock=s.match(/^(\d+):(\d{1,2})$/), hours=s.match(/(\d+)\s*h/i);
+    const s=String(value??"").trim().replace(",",".");
+    const clock=s.match(/^(\d+):(\d{1,2})$/), hours=s.match(/^(\d+)(?:\.(\d+))?\s*h(?:\s*(\d{1,2}))?$/i);
     if(clock) return Number(clock[1])*60+Number(clock[2]);
-    if(hours) return Number(hours[1])*60;
+    if(hours){
+      const whole=Number(hours[1])*60;
+      if(hours[3]!=null)return whole+Number(hours[3]);
+      if(hours[2]!=null)return whole+Math.round(Number("0."+hours[2])*60);
+      return whole;
+    }
     return Number(s) ? Math.round(Number(s)*60) : 0;
   };
   const format = value => Math.floor(Number(value||0)/60)+"h "+String(Number(value||0)%60).padStart(2,"0");
   const dayIsClosed = date => Array.isArray(state().closedDays)&&state().closedDays.includes(date||today());
+  const absenceForDate = (date, data=state()) => {
+    const value=String(date||today());
+    return (Array.isArray(data.absences)?data.absences:[]).find(item=>item&&item.start&&item.end&&value>=item.start&&value<=item.end&&item.type&&item.type!=="Arbeitstag");
+  };
+  const absenceLabel = item => String(item?.type||"Abwesenheit");
+  const targetForDate = (date, data=state()) => {
+    if(absenceForDate(date,data))return 0;
+    const dayNames=["So","Mo","Di","Mi","Do","Fr","Sa"], day=dayNames[new Date(String(date||today())+"T12:00:00").getDay()], raw=data.weekdayTargets?.[day];
+    return raw!=null&&String(raw).trim()!==""?minutes(raw):minutes(data.daily)||480;
+  };
+  const decorateMiniCalendar = () => {
+    const monthLabel=$("#month")?.textContent||"", match=monthLabel.match(/^(\S+)\s+(\d{4})$/), months=["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+    if(!match)return;
+    const monthIndex=months.indexOf(match[1]), year=Number(match[2]);
+    if(monthIndex<0||!year)return;
+    $$("#days button:not(.muted)").forEach(button=>{
+      const day=Number(button.textContent), date=dateKey(new Date(year,monthIndex,day)), absence=absenceForDate(date);
+      button.classList.toggle("absence-day",Boolean(absence));
+      button.title=absence?absenceLabel(absence)+" – keine Zeitbuchung erforderlich":"";
+      button.setAttribute("aria-label",absence?date+" · "+absenceLabel(absence)+" · keine Zeitbuchung erforderlich":date);
+    });
+  };
+  const syncAbsenceUi = () => {
+    const date=$("#workDate")?.value||today(), absence=absenceForDate(date), card=$("#qualityCard"), title=$("#qualityTitle"), text=$("#qualityText"), close=$("#closeDay"), copy=$("#copyDay"), addButton=$("#addEntry"), timerButton=$("#timer"), duration=$("#duration"), capture=$("#capture");
+    if(card){card.classList.toggle("quality-absence",Boolean(absence));if(absence)card.classList.remove("quality-empty","quality-ready","quality-closed");}
+    if(absence){
+      if(title)title.textContent="Abwesenheit: "+absenceLabel(absence);
+      if(text)text.textContent="Für diesen Tag ist keine Zeitbuchung erforderlich.";
+      if(close){close.disabled=true;close.title="An Abwesenheitstagen nicht erforderlich";}
+      if(copy){copy.disabled=true;copy.title="An Abwesenheitstagen nicht erforderlich";}
+      if(addButton){addButton.disabled=true;addButton.title="Keine Buchung an einem Abwesenheitstag möglich";}
+      if(timerButton){timerButton.disabled=true;timerButton.title="Kein Timer an einem Abwesenheitstag möglich";}
+      if(duration)duration.disabled=true;
+      if(capture){capture.classList.add("absence-capture");let hint=$("#absenceHint");if(!hint){hint=document.createElement("div");hint.id="absenceHint";hint.className="absence-hint";capture.parentNode.insertBefore(hint,capture);}hint.textContent=absenceLabel(absence)+" · "+date+" · keine Zeitbuchung erforderlich";hint.hidden=false;}
+    }else{
+      if(card)card.classList.remove("quality-absence");
+      if(close)close.title="";
+      if(copy)copy.title="Letzte Buchungen für heute übernehmen";
+      if(addButton){addButton.title="";addButton.disabled=dayIsClosed(date);}
+      if(timerButton){timerButton.title="";timerButton.disabled=dayIsClosed(date);}
+      if(duration)duration.disabled=false;
+      capture?.classList.remove("absence-capture");
+      const hint=$("#absenceHint");if(hint)hint.hidden=true;
+    }
+    decorateMiniCalendar();
+  };
+  const absenceSurfaceStyle=document.createElement("style");absenceSurfaceStyle.textContent=".stable-day.absence-day{background:#e9edf2!important;border-color:#cbd3dd!important;color:#6b7280!important;box-shadow:inset 0 -3px 0 #b8c2cf!important}.stable-day.absence-day.selected{background:#dce3eb!important;border-color:#9aa8b8!important;color:#344054!important;box-shadow:inset 0 -3px 0 #9aa8b8,0 2px 6px rgba(71,85,105,.16)!important}.stable-day.absence-day:hover{background:#dfe5eb!important;color:#344054!important}.stable-absence-badge{display:block;font-size:9px!important;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.days button.absence-day{background:#e6ebf1!important;color:#667085!important;box-shadow:inset 0 -3px 0 #b8c2cf!important}.days button.absence-day.today{background:#dce3eb!important;color:#344054!important;box-shadow:inset 0 -3px 0 #9aa8b8!important}.absence-hint{margin:0 0 14px;padding:11px 14px;border:1px solid #cbd5e1;border-left:4px solid #94a3b8;border-radius:9px;background:#eef2f6;color:#475569;font-size:12px;font-weight:700}.absence-capture{opacity:.78}.quality.quality-absence{border-left-color:#94a3b8!important;background:linear-gradient(90deg,#eef2f6 0%,#fff 30%)!important;box-shadow:0 0 0 1px #cbd5e1,0 8px 22px rgba(71,85,105,.12)!important}.quality.quality-absence .eyebrow,.quality.quality-absence #qualityTitle{color:#64748b!important}.quality.quality-absence .quality-copy-status{color:#64748b!important}@media(max-width:600px){.absence-hint{font-size:11px}}";document.head.append(absenceSurfaceStyle);
+  const absenceAgendaStyle=document.createElement("style");absenceAgendaStyle.textContent=".stable-absence-agenda{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:12px 14px;border:1px solid #cbd5e1;border-left:4px solid #94a3b8;border-radius:9px;background:#eef2f6;color:#475569}.stable-absence-agenda strong{color:#344054}.stable-absence-agenda span{font-size:12px}";document.head.append(absenceAgendaStyle);
   const enhanceEntryRows = (panel,d,redraw) => { $$(".stable-entry",panel).forEach((row,index)=>{ const icon=document.createElement("span"); icon.className="stable-entry-icon entry-color-"+(index%4); icon.innerHTML="<span aria-hidden='true'>◷</span>"; row.prepend(icon); const actions=row.lastElementChild; const edit=actions?.querySelector("[data-edit]"); const del=actions?.querySelector("[data-delete]"); if(actions&&edit&&!actions.querySelector("[data-duplicate]")){ const duplicate=document.createElement("button"); duplicate.type="button"; duplicate.className="entry-icon-button"; duplicate.dataset.duplicate=edit.dataset.edit; duplicate.title="Buchung duplizieren"; duplicate.setAttribute("aria-label","Buchung duplizieren"); duplicate.textContent="⧉"; actions.insertBefore(duplicate,del||null); duplicate.onclick=()=>{const source=d.entries[Number(duplicate.dataset.duplicate)];if(!source)return;d.entries.push({...source,id:crypto.randomUUID(),time:new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})});save(STORE,d);redraw();toast("Buchung dupliziert.")}; } }); };
   const enhanceOverviewRows = (list,d) => { $$(".entry",list).forEach(row=>{const edit=row.querySelector("[data-entry-edit]"),actions=row.querySelector(".entry-actions");if(!edit||!actions||actions.querySelector("[data-entry-duplicate]"))return;const duplicate=document.createElement("button");duplicate.className="delete";duplicate.type="button";duplicate.dataset.entryDuplicate=edit.dataset.entryEdit;duplicate.title="Buchung duplizieren";duplicate.setAttribute("aria-label","Buchung duplizieren");duplicate.textContent="⧉";actions.insertBefore(duplicate,actions.querySelector("[data-entry-delete]")||null);duplicate.onclick=()=>{const source=d.entries[Number(duplicate.dataset.entryDuplicate)];if(!source)return;d.entries.push({...source,id:crypto.randomUUID(),time:new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})});save(STORE,d);refreshOverview();toast("Buchung dupliziert.")};}); };
   const renderHelp = p => { const docs={de:{label:"Deutsch",title:"Hilfe & Dokumentation",intro:"So verwendest du jede Funktion der professionellen Zeiterfassung.",items:[["Übersicht & Timer","Starte den Timer oben. Beim Stoppen wird automatisch eine Buchung mit Datum, Kategorie, Projekt und gemessener Dauer erstellt. Über „Zeit erfassen“ kannst du eine Buchung manuell anlegen.","1. Kategorie und Projekt wählen. 2. Leistung und Bemerkung ergänzen. 3. Dauer eintragen oder den Timer verwenden. 4. „Buchung hinzufügen“ speichern."],["Einträge","Hier findest du alle Tagesbuchungen. Suche nach Kategorie, Projekt, Leistung oder Notiz. Bearbeiten öffnet das Formular, Duplizieren erstellt eine neue Buchung und Löschen verlangt eine Bestätigung.","Klicke im Kalender auf einen Tag, um genau dessen Buchungen zu öffnen. Die drei Aktionen stehen in jeder Zeile rechts."],["Woche","Die Wochenansicht zeigt Montag bis Sonntag mit Sollzeit, erfasster Zeit und Fortschritt. Klicke auf einen Tag, um direkt zu dessen Tagesbuchungen zu wechseln.","Tagessoll und Wochensoll werden im Arbeitsrahmen gepflegt und automatisch für die Fortschrittsanzeige verwendet."],["Kalender","Plane Termine, Aufgaben und Geburtstage. Wähle einen Tag, fülle Titel, Art, Zeit und optional Ort sowie Notiz aus. Erinnerungen können in Minuten, Stunden, Tagen oder Wochen angegeben werden.","Erstellen, Bearbeiten und Löschen erfolgt über die Dialoge. Ein Kalender-Eintrag mit Erinnerung erscheint auch im Erinnerungszähler."],["Notizen & Aufgaben","Erstelle Notizen mit Titel, Inhalt, Bereich und direkter Farbauswahl. Die Notizen lassen sich nach Bereich, Farbe und Suchtext filtern.","Im Checklistenbereich Aufgaben hinzufügen, abhaken oder löschen. Eine leere Aufgabe wird rot markiert und fokussiert. Mit „Speichern“ werden Änderungen übernommen."],["Kategorien, Projekte & Favoriten","Pflege deine wiederverwendbaren Kategorien, Projekte und Favoriten. Neue Einträge werden über „Hinzufügen“ angelegt; Bearbeiten und Löschen stehen direkt in der jeweiligen Zeile.","Favoriten können schnell wiederverwendet werden und erscheinen in der persönlichen Übersicht."],["Auswertung & Export","Die Auswertung zeigt Wochenzeit, Zielerreichung, Durchschnitt, Monats- und Jahreswerte sowie die Verteilung nach Kategorie.","CSV und PDF können für Tag, Zeitraum, Monat oder Jahr exportiert werden."],["Einstellungen & Abwesenheit","Lege Tages- und Wochensoll, Abwesenheitsart, Zeitraum und Bemerkung fest. Projekte können inklusive Budget und Status verwaltet werden.","Abwesenheit hinzufügen, bearbeiten oder löschen; Pflichtfelder werden vor dem Speichern geprüft."],["Erinnerungen & Benachrichtigungen","Der Zähler oben zeigt gespeicherte Erinnerungen an. Ein Klick öffnet direkt den Kalender-Eintrag mit der frühesten Erinnerung.","„Benachrichtigungen testen“ benötigt die Browser-Berechtigung. Wenn Systemmeldungen blockiert sind, erscheint zusätzlich eine lokale App-Meldung."],["Profil & Datenschutz","Im Profilmenü stehen Einloggen, Registrierung, Sicherung und Wiederherstellung zur Verfügung. Beim Ausloggen wird das Profil geschlossen und direkt das Login-Formular angezeigt.","Alle lokalen Eingaben werden im Browser gespeichert. Für eine Anmeldung oder Synchronisierung kannst du die Authentifizierung verwenden."]]},fr:{label:"Français",title:"Aide & documentation",intro:"Comment utiliser chaque fonction de la gestion professionnelle du temps.",items:[["Accueil & minuteur","Lancez le minuteur en haut. À l’arrêt, une saisie est automatiquement créée avec la date, la catégorie, le projet et la durée mesurée. « Saisir du temps » permet une saisie manuelle.","1. Choisissez la catégorie et le projet. 2. Ajoutez la prestation et une remarque. 3. Saisissez la durée ou utilisez le minuteur. 4. Enregistrez la saisie."],["Saisies","Toutes les saisies du jour sont affichées ici. Recherchez par catégorie, projet, prestation ou note. Modifier ouvre le formulaire, Dupliquer crée une nouvelle saisie et Supprimer demande une confirmation.","Cliquez sur un jour du calendrier pour ouvrir uniquement ses saisies. Les trois actions sont visibles à droite de chaque ligne."],["Semaine","La vue semaine affiche le lundi au dimanche, le temps prévu, le temps saisi et la progression. Cliquez sur un jour pour ouvrir ses saisies.","Le temps quotidien et hebdomadaire se règle dans le cadre de travail."],["Calendrier","Planifiez des rendez-vous, tâches et anniversaires. Saisissez le titre, le type, l’heure et, si besoin, le lieu et une note. Les rappels acceptent minutes, heures, jours ou semaines.","Créer, modifier et supprimer se fait avec les boîtes de dialogue. Les rappels apparaissent dans le compteur de notifications."],["Notes & tâches","Créez des notes avec titre, contenu, zone et couleur. Filtrez par zone, couleur ou texte de recherche.","Ajoutez, cochez ou supprimez les tâches de la checklist. Une tâche vide est signalée en rouge et reçoit le focus. Enregistrez pour appliquer les changements."],["Catégories, projets & favoris","Gérez les catégories, projets et favoris réutilisables. Ajoutez, modifiez ou supprimez directement dans chaque ligne.","Les favoris peuvent être réutilisés rapidement dans l’espace personnel."],["Statistiques & export","Les statistiques présentent le temps de la semaine, l’objectif, la moyenne, les valeurs mensuelles et annuelles ainsi que la répartition par catégorie.","Exportez en CSV ou PDF pour un jour, une période, un mois ou une année."],["Paramètres & absences","Configurez les objectifs quotidiens et hebdomadaires, les absences, les périodes et les projets avec budget et statut.","Ajoutez, modifiez ou supprimez une absence. Les champs obligatoires sont contrôlés avant l’enregistrement."],["Rappels & notifications","Le compteur affiche les rappels enregistrés. Un clic ouvre directement le rendez-vous le plus proche dans le calendrier.","« Tester les notifications » nécessite l’autorisation du navigateur. Une notification locale reste disponible si le système les bloque."],["Profil & confidentialité","Le menu du profil propose connexion, inscription, sauvegarde et restauration. Après déconnexion, le profil se ferme et le formulaire de connexion s’affiche immédiatement.","Les données saisies sont conservées localement dans le navigateur. L’authentification permet la synchronisation."]]}};let lang="de";const draw=()=>{const doc=docs[lang];p.innerHTML="<div class='stable-section-head stable-help-hero'><div><div class='eyebrow'>Hilfe · Aide</div><h2>"+doc.title+"</h2><p>"+doc.intro+"</p></div><div class='seg stable-help-langs'><button type='button' data-help-lang='de' class='"+(lang==="de"?"active":"")+"'>Deutsch</button><button type='button' data-help-lang='fr' class='"+(lang==="fr"?"active":"")+"'>Français</button></div></div><div class='stable-help-grid'>"+doc.items.map((item,i)=>"<article class='card stable-help-card'><span class='stable-help-number'>"+String(i+1).padStart(2,"0")+"</span><h3>"+item[0]+"</h3><p>"+item[1]+"</p><div class='stable-help-steps'>"+item[2]+"</div></article>").join("")+"</div>";$$('[data-help-lang]',p).forEach(b=>b.onclick=()=>{lang=b.dataset.helpLang;draw()})};draw();};
@@ -123,7 +176,7 @@
     const d=state(), todayEntries=d.entries.map((e,i)=>Object.assign({_i:i},e)).filter(e=>e.date===today()), total=todayEntries.reduce((sum,e)=>sum+Number(e.minutes||0),0), all=d.entries.reduce((sum,e)=>sum+Number(e.minutes||0),0);
     const set=(id,value)=>{const n=$("#"+id);if(n)n.textContent=value};
     set("todayTotal",format(total)); set("entrySum","Gesamt: "+format(total)); set("weekTotal",format(all));
-    const dailyTarget=minutes(d.daily)||480, balance=total-dailyTarget; set("balance",(balance>=0?"+":"−")+format(Math.abs(balance)));
+    const dailyTarget=targetForDate(today(),d), balance=total-dailyTarget; set("balance",(balance>=0?"+":"−")+format(Math.abs(balance)));
     const bar=$("#weekBar");if(bar)bar.style.width=Math.min(100,total/Math.max(1,minutes(d.weekly)||2400)*100)+"%";
       const card=$("#qualityCard"), title=$("#qualityTitle"), text=$("#qualityText"), close=$("#closeDay"), copy=$("#copyDay"), addButton=$("#addEntry"), timerButton=$("#timer"), copyStatus=$("#copyDayStatus"), closed=Array.isArray(d.closedDays)&&d.closedDays.includes(today());if(card){card.classList.toggle("quality-empty",!closed&&!total);card.classList.toggle("quality-ready",!closed&&!!total);card.classList.toggle("quality-closed",closed);}if(title)title.textContent=closed?"Tag abgeschlossen":total?"Bereit zum Abschluss":"Prüfung erforderlich";if(text)text.textContent=closed?"Die Buchungen sind vor unbeabsichtigten Änderungen geschützt.":total?"Zeit wurde erfasst und kann abgeschlossen werden.":"Für diesen Arbeitstag ist noch keine Zeit erfasst.";if(close){close.disabled=!total;close.textContent=closed?"▣ Tag wieder öffnen":"▣ Tag abschliessen";}if(copy){copy.disabled=closed;copy.title=closed?"Tag wieder öffnen, um Buchungen zu übernehmen":"Letzte Buchungen für heute übernehmen";}if(addButton)addButton.disabled=closed;if(timerButton)timerButton.disabled=closed;if(copyStatus){const copied=d.lastCopiedWorkday;if(copied?.source&&copied?.target){copyStatus.textContent="Buchungen vom "+new Date(copied.source+"T12:00:00").toLocaleDateString("de-DE")+" für den "+new Date(copied.target+"T12:00:00").toLocaleDateString("de-DE")+" übernommen.";copyStatus.hidden=false;}else copyStatus.hidden=true;}
     const list=$("#entryList");
@@ -149,6 +202,7 @@
         pagination.innerHTML=hasPages?"<span>Seite "+entryPage+" von "+totalPages+" · "+filteredRows.length+" Einträge</span><div class='pagination-actions'><button class='pagination-prev' data-entry-page='-1' "+(entryPage===1?"disabled":"")+">‹ Zurück</button><button class='pagination-next' data-entry-page='1' "+(entryPage===totalPages?"disabled":"")+">Weiter ›</button></div>":"";
       }
     }
+    syncAbsenceUi();
   };
 
   const showModal = (title, body, action, onSave) => {
@@ -170,13 +224,13 @@
   };
   const editEntry = (index, redraw) => {
     const d=state(), e=d.entries[index]; if(!e) return;
-    if(dayIsClosed(e.date)){toast("Dieser Arbeitstag ist abgeschlossen. Bitte zuerst wieder öffnen.");return;}
+    if(dayIsClosed(e.date)||absenceForDate(e.date)){toast(absenceForDate(e.date)?"Für diesen Abwesenheitstag ist keine Zeitbuchung erforderlich.":"Dieser Arbeitstag ist abgeschlossen. Bitte zuerst wieder öffnen.");return;}
     const root=showModal("Buchung bearbeiten",
       "<div class='stable-two'><div class='field'><label>Kategorie *</label><select id='seCategory'>"+d.categories.map(x=>"<option>"+escapeHtml(x)+"</option>").join("")+"</select></div><div class='field'><label>Projekt / Betrieb *</label><select id='seProject'>"+d.projects.map(x=>"<option>"+escapeHtml(typeof x==='string'?x:x.name)+"</option>").join("")+"</select></div></div>"+
       "<div class='field'><label>Datum *</label><input id='seDate' type='date' value='"+escapeHtml(e.date||today())+"'></div>"+
       "<div class='stable-two'><div class='field'><label>Leistung</label><input id='seDesc' value='"+escapeHtml(e.description||"")+"'></div><div class='field'><label>Dauer (Minuten) *</label><input id='seMinutes' type='number' min='1' value='"+Number(e.minutes||0)+"'></div></div>"+
       "<div class='field'><label>Bemerkung / Jira-Referenz</label><input id='seNote' value='"+escapeHtml(e.notes||"")+"'></div>",
-      "Speichern", root => { if(!showValidation(root,["#seCategory","#seProject","#seDate","#seMinutes"],"Bitte fülle alle Pflichtfelder aus."))return; e.category=$("#seCategory",root).value; e.project=$("#seProject",root).value; e.date=$("#seDate",root).value; e.description=$("#seDesc",root).value; e.minutes=Number($("#seMinutes",root).value||0); e.notes=$("#seNote",root).value; save(STORE,d); root.remove(); redraw(); toast("Buchung gespeichert."); });
+      "Speichern", root => { if(!showValidation(root,["#seCategory","#seProject","#seDate","#seMinutes"],"Bitte fülle alle Pflichtfelder aus."))return; const nextDate=$("#seDate",root).value;if(absenceForDate(nextDate)){toast("Buchungen sind an Abwesenheitstagen nicht erforderlich.");return;} e.category=$("#seCategory",root).value; e.project=$("#seProject",root).value; e.date=nextDate; e.description=$("#seDesc",root).value; e.minutes=Number($("#seMinutes",root).value||0); e.notes=$("#seNote",root).value; save(STORE,d); root.remove(); redraw(); toast("Buchung gespeichert."); });
     $("#seCategory",root).value=e.category||d.categories[0]||""; $("#seProject",root).value=e.project||((d.projects[0]&&typeof d.projects[0]==='object')?d.projects[0].name:d.projects[0]||"");
   };
   const renderCalendar = p => {
@@ -197,6 +251,19 @@
     const label=date=>new Date(date+"T12:00:00").toLocaleDateString("de-DE",{weekday:"long",day:"2-digit",month:"long",year:"numeric"});
     p.innerHTML="<div class='stable-cal-head'><div><div class='eyebrow'>Persönlicher Kalender</div><h2>Termine, Aufgaben & Geburtstage</h2><p>Alles lokal geplant und mit rechtzeitiger Erinnerung.</p></div><div class='stable-cal-notice'><b>Browser- & Smartphone-<br>Benachrichtigungen aktiv</b><small>Für Erinnerungen bei geschlossener App in Outlook, Teams oder den Gerätekalender übernehmen.</small></div><div class='stable-cal-actions'><button class='btn' id='stableIcs'>⇩ Outlook / Teams / Gerät</button><button class='btn' id='stableNotify'>♧ Benachrichtigungen testen</button><button class='btn primary' id='newStableCal'>＋ Neuer Eintrag</button></div></div><div class='stable-cal-layout'><section class='card stable-month'><div class='stable-month-head'><button class='btn' id='calPrev'>‹</button><div><h2 id='calTitle'></h2><button class='btn' id='calToday'>Heute</button></div><button class='btn' id='calNext'>›</button></div><div class='stable-weekdays'>"+weekdays.map(x=>"<b>"+x+"</b>").join("")+"</div><div id='stableGrid' class='stable-grid'></div></section><section class='card stable-agenda'><div class='stable-agenda-head'><div><div class='eyebrow'>Agenda</div><h2 id='stableAgendaTitle'></h2></div><div class='seg'><button id='modeDay' class='active'>Tag</button><button id='modeWeek'>Woche</button></div></div><div id='stableAgenda'></div></section></div>";
     let openEditor;
+    const decorateAbsenceCalendar=()=>{
+      const grid=$("#stableGrid",p);if(!grid)return;
+      $$(".stable-day[data-date]",grid).forEach(button=>{
+        const absence=absenceForDate(button.dataset.date), existing=button.querySelector(".stable-absence-badge");
+        button.classList.toggle("absence-day",Boolean(absence));
+        if(absence&&!existing){const badge=document.createElement("small");badge.className="stable-absence-badge";badge.textContent=absenceLabel(absence);button.append(badge);}
+        if(!absence&&existing)existing.remove();
+        button.title=absence?absenceLabel(absence)+" – keine Zeitbuchung erforderlich":"";
+        button.setAttribute("aria-label",absence?button.dataset.date+" · "+absenceLabel(absence)+" · keine Zeitbuchung erforderlich":button.dataset.date);
+      });
+    };
+    const absenceObserver=new MutationObserver(decorateAbsenceCalendar);
+    absenceObserver.observe($("#stableGrid",p),{childList:true});
     const draw=()=>{
       const y=cal.month.getFullYear(), m=cal.month.getMonth(), first=(new Date(y,m,1).getDay()+6)%7, last=new Date(y,m+1,0).getDate(), grid=$("#stableGrid",p), bookedDates=new Set(state().entries.map(e=>e.date));
       $("#calTitle",p).textContent=months[m]+" "+y; grid.innerHTML="";
@@ -207,7 +274,10 @@
       const selected=new Date(cal.selected+"T12:00:00"), end=new Date(selected); end.setDate(end.getDate()+(cal.mode==="week"?6:0));
       const list=events.filter(x=>x.date>=cal.selected&&x.date<=dateKey(end));
       $("#stableAgenda",p).innerHTML=list.length?list.map(x=>"<div class='stable-event'><div><div class='stable-event-type'>"+escapeHtml(x.type||"Termin")+"</div><b>"+escapeHtml(x.title)+"</b><div class='sub'>"+(x.allDay?"Ganztägig":escapeHtml(x.start||"")+" – "+escapeHtml(x.end||""))+(x.place?" · "+escapeHtml(x.place):"")+" · Erinnerung: "+reminderText(x)+"</div><p>"+escapeHtml(x.note||"")+"</p></div><div class='stable-event-actions'><button class='btn' data-event-edit='"+escapeHtml(x.id)+"'>Bearbeiten</button><button class='delete' data-event-delete='"+escapeHtml(x.id)+"' aria-label='Kalendereintrag löschen'>×</button></div></div>").join(""):"<div class='stable-empty-cal'><div class='stable-cal-icon'>▦</div><h3>Noch keine Einträge</h3><p>Plane einen Termin, eine Aufgabe oder einen Geburtstag.</p><button class='btn' id='stableEmptyNew'>＋ Eintrag erstellen</button></div>";
+      const selectedAbsence=absenceForDate(cal.selected);
+      if(selectedAbsence){const agenda=$("#stableAgenda",p),notice=document.createElement("div");notice.className="stable-absence-agenda";notice.innerHTML="<strong>"+escapeHtml(absenceLabel(selectedAbsence))+"</strong><span>Keine Zeitbuchung erforderlich.</span>";agenda.prepend(notice);}
       $$("[data-date]",p).forEach(b=>b.onclick=()=>{cal.selected=b.dataset.date;localStorage.setItem(SELECTED_ENTRY_DATE,cal.selected);draw();routeTo("entries",true)});
+      $$("[data-date]",p).forEach(b=>{if(absenceForDate(b.dataset.date))b.onclick=()=>{cal.selected=b.dataset.date;localStorage.setItem(SELECTED_ENTRY_DATE,cal.selected);draw();}});
       $("#stableEmptyNew",p)?.addEventListener("click",()=>$("#newStableCal",p).click());
       $$("[data-event-edit]",p).forEach(b=>b.onclick=()=>{const item=events.find(x=>String(x.id)===String(b.dataset.eventEdit));if(item&&openEditor)openEditor(item)});
       $$('[data-event-delete]',p).forEach(b=>b.onclick=()=>{const item=events.find(x=>String(x.id)===String(b.dataset.eventDelete));if(item)confirmDelete("Kalendereintrag löschen",escapeHtml(item.title||"Kalendereintrag"),()=>{const i=events.indexOf(item);if(i>=0){events.splice(i,1);save(CALENDAR,events);removeCalendar(item);draw();toast("Kalendereintrag gelöscht.")}})});
@@ -311,6 +381,25 @@
   const decorateStatsBars = p => { $$(".stats-bar-col",p).forEach((bar,index)=>{const date=statsDateForIndex(index);bar.dataset.statsDate=date;bar.setAttribute("role","button");bar.setAttribute("tabindex","0");bar.setAttribute("aria-label",""+["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"][index]+" "+date+" öffnen");}); };
   const statsBarClick = e => { const bar=e.target.closest(".stats-bar-col");if(!bar||!bar.dataset.statsDate)return;e.preventDefault();e.stopImmediatePropagation();localStorage.setItem(SELECTED_ENTRY_DATE,bar.dataset.statsDate);routeTo("entries",true); };
   const statsBarKeydown = e => { if((e.key==="Enter"||e.key===" ")&&e.target.closest(".stats-bar-col")){e.preventDefault();e.target.closest(".stats-bar-col").click();} };
+  const validTarget = raw => {
+    const value=String(raw||"").trim();
+    return value&&(!minutes(value)||minutes(value)>0||/^0(?:[.,]0+)?(?:\s*h(?:\s*0{1,2})?)?$/.test(value));
+  };
+  const bindTargetInputs = root => {
+    $$("#daily,#weekly,.stable-day-input,#weekDaily,#weekWeekly",root).forEach(input=>{
+      input.type="text";input.inputMode="decimal";input.placeholder="z. B. 8h 30";
+      if(input.dataset.targetBound)return;
+      input.dataset.targetBound="1";
+      input.onchange=()=>{
+        const raw=input.value.trim();
+        if(!validTarget(raw)){toast("Bitte eine Sollzeit wie 8h 30 oder 8:30 eingeben.");input.focus();return;}
+        const n=state();
+        if(input.matches(".stable-day-input")){n.weekdayTargets=n.weekdayTargets||{};n.weekdayTargets[input.dataset.day]=raw;}
+        else n[input.id==="weekly"||input.id==="weekWeekly"?"weekly":"daily"]=raw;
+        save(STORE,n);refreshOverview();
+      };
+    });
+  };
   const render = name => {
     currentView=name; const p=panel(); if(!p)return; const d=state(); p.hidden=false;if(name==="entries"){renderEntriesTable(p,d);return;}if(name==="help"){renderHelp(p);return;}
     if(name==="entries"){const draw=()=>{const selectedDate=localStorage.getItem(SELECTED_ENTRY_DATE)||"", q=($("#stableSearch",p)?.value||"").toLowerCase(), list=d.entries.map((e,i)=>({...e,_i:i})).filter(e=>(!selectedDate||e.date===selectedDate)&&[e.date,e.category,e.project,e.description,e.notes].join(" ").toLowerCase().includes(q));const selectedLabel=selectedDate?new Date(selectedDate+"T12:00:00").toLocaleDateString("de-DE",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"}):"Alle Buchungen";p.innerHTML="<div class='stable-section-head'><div><div class='eyebrow'>Tagesbuchungen</div><h2>Einträge</h2><p>"+escapeHtml(selectedLabel)+(selectedDate?" · Buchungen dieses Tages":" · Alle Buchungen")+"</p></div><button class='btn' id='stableTodayEntries'>Heute</button></div><input id='stableSearch' class='search' placeholder='Kategorie, Projekt, Leistung oder Notiz suchen' value='"+escapeHtml(q)+"'><div id='stableRows'></div>";$("#stableRows",p).innerHTML=list.length?list.map(e=>"<div class='card stable-entry'><div><b>"+escapeHtml(e.date)+" · "+escapeHtml(e.category)+" · "+escapeHtml(e.project)+"</b><div class='sub'>"+escapeHtml(e.description||"Keine Leistung")+" · "+escapeHtml(e.notes||"Keine Notiz")+"</div></div><div><strong>"+format(e.minutes)+"</strong><br><button class='btn' data-edit='"+e._i+"'>Bearbeiten</button> <button class='btn' data-delete='"+e._i+"'>Löschen</button></div></div>").join(""):"<p class='sub'>"+(selectedDate?"Keine Buchungen für diesen Tag.":"Keine Buchungen vorhanden.")+"</p>";$("#stableSearch",p).oninput=draw;$("#stableTodayEntries",p).onclick=()=>{localStorage.setItem(SELECTED_ENTRY_DATE,today());draw()};$$("[data-delete]",p).forEach(b=>b.onclick=()=>{const item=d.entries[Number(b.dataset.delete)];if(item)confirmDelete("Buchung löschen",escapeHtml(item.category||"Buchung")+" · "+escapeHtml(item.project||""),()=>{d.entries.splice(Number(b.dataset.delete),1);save(STORE,d);draw();toast("Buchung gelöscht.")})});$$("[data-edit]",p).forEach(b=>b.onclick=()=>editEntry(Number(b.dataset.edit),draw));}; draw();}
@@ -335,14 +424,11 @@
       button.classList.toggle("active",active);
       if(active){
         button.setAttribute("aria-current","page");
-        // Keep every route reachable in the horizontally scrollable mobile nav.
         const nav=button.closest(".nav");
         if(nav.scrollWidth>nav.clientWidth)nav.scrollLeft=Math.max(0,button.offsetLeft-nav.offsetLeft-(nav.clientWidth-button.offsetWidth)/2);
       }else button.removeAttribute("aria-current");
     });
     document.title="Professionelle Zeiterfassung · "+ROUTES[view];
-    // popstate + hashchange can describe the same transition. Repeated clicks
-    // must also leave the current editor and its unsaved input intact.
     if(mountedView===view)return;
     if(refreshTimer){clearTimeout(refreshTimer);refreshTimer=0;}
     const p=panel(), overview=$("#overviewView");
@@ -351,26 +437,27 @@
     p.hidden=view==="overview";
     p.setAttribute("aria-label",ROUTES[view]);
     if(view==="overview")refreshOverview();else render(view);
+    bindTargetInputs(document);
+    syncAbsenceUi();
     const isInitial=mountedView===null;
     mountedView=view;
     if(!isInitial){
       const heading=view==="overview"?$(".top h1"):$("h2",p)||p;
       if(heading){heading.setAttribute("tabindex","-1");heading.focus({preventScroll:true});}
     }
-    // New pages begin at their top, not at the old dashboard's scroll offset.
-    // This is instant, not an animated jump to a section below the dashboard.
     window.scrollTo({top:0,left:0,behavior:"instant"});
   };
   let timerStarted=0, timerInterval;
   const handleClick = e => {
     const addEntry=e.target.closest("#addEntry"), workDate=$("#workDate")?.value||today();
-    if(addEntry&&dayIsClosed(workDate)){e.preventDefault();e.stopImmediatePropagation();toast("Dieser Arbeitstag ist abgeschlossen. Bitte zuerst wieder öffnen.");return;}
+    if(addEntry&&(dayIsClosed(workDate)||absenceForDate(workDate))){e.preventDefault();e.stopImmediatePropagation();toast(absenceForDate(workDate)?"Für diesen Abwesenheitstag ist keine Zeitbuchung erforderlich.":"Dieser Arbeitstag ist abgeschlossen. Bitte zuerst wieder öffnen.");return;}
     const miniDay=e.target.closest("#days button:not(.muted)");
     if(miniDay){e.preventDefault();e.stopImmediatePropagation();const monthText=$("#month")?.textContent||"",match=monthText.match(/^(\S+)\s+(\d{4})$/),monthNames=["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"],monthIndex=match?monthNames.indexOf(match[1]):-1,year=match?Number(match[2]):NaN,day=Number(miniDay.textContent);if(monthIndex>=0&&year&&!Number.isNaN(day)){const selected=dateKey(new Date(year,monthIndex,day));if($("#workDate"))$("#workDate").value=selected;localStorage.setItem(SELECTED_ENTRY_DATE,selected);routeTo("entries",true);}return;}
     const copyDay=e.target.closest("#copyDay");
     if(copyDay&&!copyDay.disabled){
       e.preventDefault();e.stopImmediatePropagation();
       const d=state(),date=$("#workDate")?.value||today(),sourceDates=[...new Set(d.entries.map(item=>item.date).filter(item=>item&&item<date))].sort(),sourceDate=sourceDates.at(-1),sourceEntries=sourceDate?d.entries.filter(item=>item.date===sourceDate):[];
+      if(absenceForDate(date)){toast("Für diesen Abwesenheitstag ist keine Zeitbuchung erforderlich.");return;}
       if(!sourceEntries.length){toast("Keine Buchungen des vorherigen Arbeitstags gefunden.");return;}
       const copied=sourceEntries.map(item=>({...item,id:crypto.randomUUID(),date,time:item.time||new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})}));d.entries.push(...copied);d.lastCopiedWorkday={source:sourceDate,target:date,count:copied.length};save(STORE,d);refreshOverview();toast(copied.length+" Buchung"+(copied.length===1?"":"en")+" vom "+new Date(sourceDate+"T12:00:00").toLocaleDateString("de-DE")+" übernommen.");return;
     }
@@ -443,17 +530,17 @@
     if(changed)save(REMINDER_STATE,sent);
     const count=current.length;const badge=$("#noticeCount");if(badge)badge.textContent=String(count);
   };
-  const blockClosedMutations = e => {const action=e.target.closest("#addEntry,#timer,.entry [data-entry-edit],.entry [data-entry-delete],.entry [data-entry-duplicate],.stable-entry [data-edit],.stable-entry [data-delete],.stable-entry [data-duplicate]");if(!action)return;const index=Number(action.dataset.entryEdit??action.dataset.entryDelete??action.dataset.entryDuplicate??action.dataset.edit??action.dataset.delete??action.dataset.duplicate),item=Number.isNaN(index)?null:state().entries[index],date=item?.date||$("#workDate")?.value||today();if(dayIsClosed(date)){e.preventDefault();e.stopImmediatePropagation();toast("Dieser Arbeitstag ist abgeschlossen. Bitte zuerst wieder öffnen.");}};
+  const blockClosedMutations = e => {const action=e.target.closest("#addEntry,#timer,.entry [data-entry-edit],.entry [data-entry-delete],.entry [data-entry-duplicate],.stable-entry [data-edit],.stable-entry [data-delete],.stable-entry [data-duplicate]");if(!action)return;const index=Number(action.dataset.entryEdit??action.dataset.entryDelete??action.dataset.entryDuplicate??action.dataset.edit??action.dataset.delete??action.dataset.duplicate),item=Number.isNaN(index)?null:state().entries[index],date=item?.date||$("#workDate")?.value||today(),absence=absenceForDate(date);if(dayIsClosed(date)||absence){e.preventDefault();e.stopImmediatePropagation();toast(absence?"Für diesen Abwesenheitstag ist keine Zeitbuchung erforderlich.":"Dieser Arbeitstag ist abgeschlossen. Bitte zuerst wieder öffnen.");}};
   const handleTimerClick = e => { if(!e.target.closest("#timer"))return; e.preventDefault();e.stopImmediatePropagation();const button=$("#timer");if(!timerStarted){timerStarted=Date.now();button.textContent="■ Timer stoppen";timerInterval=setInterval(()=>{const elapsed=Math.floor((Date.now()-timerStarted)/1000);button.textContent="■ "+String(Math.floor(elapsed/3600)).padStart(2,"0")+":"+String(Math.floor(elapsed/60)%60).padStart(2,"0")+":"+String(elapsed%60).padStart(2,"0")},1000);toast("Timer gestartet.");return;}const elapsed=Math.max(1,Math.round((Date.now()-timerStarted)/60000));clearInterval(timerInterval);timerStarted=0;button.textContent="▷ Timer starten";const d=state(),entry={id:crypto.randomUUID(),date:$("#workDate")?.value||today(),category:$("#category")?.value||"Organisation",project:$("#project")?.value||"Intern",description:$("#description")?.value||"Timer-Buchung",minutes:elapsed,notes:$("#notes")?.value||"",time:new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})};d.entries.push(entry);save(STORE,d);const durationButton=$("#duration");if(durationButton){const span=$("span",durationButton);if(span)span.textContent=format(elapsed)}refreshOverview();toast("Timer gestoppt – Buchung wurde erstellt.");};
   const handleTimerAccurate = e => { if(!e.target.closest("#timer"))return; e.preventDefault();e.stopImmediatePropagation();const button=$("#timer");if(!timerStarted){timerStarted=Date.now();button.textContent="■ Timer stoppen";timerInterval=setInterval(()=>{const elapsed=Math.floor((Date.now()-timerStarted)/1000);button.textContent="■ "+String(Math.floor(elapsed/3600)).padStart(2,"0")+":"+String(Math.floor(elapsed/60)%60).padStart(2,"0")+":"+String(elapsed%60).padStart(2,"0")},1000);toast("Timer gestartet.");return;}const elapsed=Math.max(0,Math.floor((Date.now()-timerStarted)/60000));clearInterval(timerInterval);timerStarted=0;button.textContent="▷ Timer starten";const d=state(),entry={id:crypto.randomUUID(),date:$("#workDate")?.value||today(),category:$("#category")?.value||"Organisation",project:$("#project")?.value||"Intern",description:$("#description")?.value||"Timer-Buchung",minutes:elapsed,notes:$("#notes")?.value||"",time:new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})};d.entries.push(entry);save(STORE,d);const durationButton=$("#duration");if(durationButton){const span=$("span",durationButton);if(span)span.textContent=format(elapsed)}refreshOverview();toast("Timer gestoppt – Buchung wurde erstellt.");};
   const init=()=>{
-    // Bind navigation before optional data/reminder work can fail.
     document.addEventListener("click",blockClosedMutations,true);document.addEventListener("click",statsBarClick,true);document.addEventListener("keydown",statsBarKeydown,true);document.addEventListener("click",handleTimerAccurate,true);document.addEventListener("click",handleTimerClick,true);document.addEventListener("click",handleClick,true);
     if("scrollRestoration" in history)history.scrollRestoration="manual";
     if(!Storage.prototype.__zeiterfassungPatched){const originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){originalSetItem.call(this,key,value);window.dispatchEvent(new CustomEvent("zeiterfassung-storage-changed",{detail:key}));};Storage.prototype.__zeiterfassungPatched=true;}
     window.addEventListener("zeiterfassung-storage-changed",e=>{if([STORE,CALENDAR,NOTES].includes(e.detail))requestRefresh()});window.addEventListener("storage",e=>{if([STORE,CALENDAR,NOTES].includes(e.key))requestRefresh()});
     bindWorkMode();const reminderMetric=$("#noticeCount")?.closest(".metric");if(reminderMetric&&!reminderMetric.dataset.bound){reminderMetric.dataset.bound="1";reminderMetric.setAttribute("role","button");reminderMetric.setAttribute("tabindex","0");const openReminders=()=>{const event=read(CALENDAR,[]).filter(item=>Number(item.reminder||0)>0).sort((a,b)=>String(a.date).localeCompare(String(b.date)))[0];if(event?.date)localStorage.setItem(SELECTED_ENTRY_DATE,event.date);routeTo("calendar",true)};reminderMetric.onclick=openReminders;reminderMetric.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openReminders()}}}
     const searchInput=$("#search");if(searchInput)searchInput.addEventListener("input",()=>{entryPage=1;refreshOverview()});
+    const workDateInput=$("#workDate");if(workDateInput&&!workDateInput.dataset.absenceBound){workDateInput.dataset.absenceBound="1";workDateInput.addEventListener("change",()=>{refreshOverview();syncAbsenceUi()});}
     pullRemote();window.addEventListener("zeiterfassung-auth-changed",()=>{pullRemote();requestRefresh()});window.ZeiterfassungRefresh=()=>{if(refreshTimer){clearTimeout(refreshTimer);refreshTimer=0}refreshNow()};window.addEventListener("popstate",()=>routeTo(routeFromLocation(),false));window.addEventListener("hashchange",()=>routeTo(routeFromLocation(),false));checkReminders();routeTo(routeFromLocation(),false);setInterval(checkReminders,30000);$$("body *").forEach(x=>{if(x.childNodes.length===1){const raw=x.textContent||"";const normalized=raw.replace(/Valt%C3%A8re(?:%20|\s)Fansi/gi,"Valtère Fansi");if(normalized!==raw)x.textContent=normalized;}});};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
