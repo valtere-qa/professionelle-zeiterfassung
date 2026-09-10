@@ -342,9 +342,14 @@ test('Help provides German and French documentation for the app functions', asyn
   const a = await app(t, '#help');
   assert.equal(a.window.document.querySelectorAll('.stable-help-card').length, 10);
   assert.match(a.$('#dynamic').textContent, /Timer/);
+  assert.match(a.$('#dynamic').textContent, /Tagesabschluss/);
+  assert.match(a.$('#dynamic').textContent, /Tagessaldo/);
+  assert.match(a.$('#dynamic').textContent, /ausgewählte Datum/);
   a.$('[data-help-lang="fr"]').click();
   assert.match(a.$('#dynamic').textContent, /Saisies/);
   assert.match(a.$('#dynamic').textContent, /Calendrier/);
+  assert.match(a.$('#dynamic').textContent, /date sélectionnée/);
+  assert.match(a.$('#dynamic').textContent, /solde journalier/);
 });
 
 test('Stats page renders the professional analytics dashboard', async t => {
@@ -545,6 +550,30 @@ test('Day completion uses a styled confirmation dialog and updates immediately',
   assert.equal(a.$('[data-entry-edit]').disabled, false);
 });
 
+test('Day completion and reopening use the selected booking date', async t => {
+  const other = '2026-09-09';
+  const a = await app(t, '#overview', {
+    [STORE]: { entries: [{ date: other, minutes: 30, category: 'Testing', project: 'Intern' }] }
+  });
+  const picker = a.$('#entriesDate');
+  picker.value = other;
+  picker.dispatchEvent(new a.window.Event('change', { bubbles: true }));
+  assert.equal(a.$('#workDate').value, other);
+  a.$('#closeDay').click();
+  assert.ok(a.$('.stable-dialog'));
+  a.$('.stable-save').click();
+  let data = JSON.parse(a.window.localStorage.getItem(STORE));
+  assert.deepEqual(data.closedDays, [other]);
+  assert.match(a.$('#qualityTitle').textContent, /Tag abgeschlossen/);
+  assert.equal(a.$('#addEntry').disabled, true);
+  a.$('#closeDay').click();
+  assert.match(a.$('.stable-dialog').textContent, /wieder öffnen/);
+  a.$('.stable-save').click();
+  data = JSON.parse(a.window.localStorage.getItem(STORE));
+  assert.deepEqual(data.closedDays, []);
+  assert.equal(a.$('#addEntry').disabled, false);
+});
+
 test('Copy last workday is enabled and copies bookings to today immediately', async t => {
   const previous = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
   const a = await app(t, '#overview', { [STORE]: { entries: [{ date: previous, minutes: 45, category: 'Testing', project: 'Intern', description: 'Vorheriger Tag' }] } });
@@ -708,6 +737,9 @@ test('Absence dates are greyed out and block time capture', async t => {
   assert.match(a.$('#qualityTitle').textContent, /Ferien/);
   assert.equal(a.$('#absenceHint').hidden, false);
   assert.ok(a.$('#days button.absence-day'));
+  a.$('#days button.absence-day').click();
+  assertView(a, 'overview');
+  assert.match(a.$('#qualityTitle').textContent, /Ferien/);
 });
 
 test('Stable calendar marks absence dates and explains that no booking is needed', async t => {
@@ -729,6 +761,25 @@ test('Daily target accepts hours and minutes and saves per-weekday settings', as
   monday.value = '8h 30';
   monday.dispatchEvent(new a.window.Event('change', { bubbles: true }));
   assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).weekdayTargets.Mo, '8h 30');
+});
+
+test('Changing daily target updates the selected day balance immediately', async t => {
+  const dayNames = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+  const day = dayNames[new Date(TODAY + 'T12:00:00').getDay()];
+  const a = await app(t, '#overview', {
+    [STORE]: {
+      entries: [{ date: TODAY, minutes: 540, category: 'Testing', project: 'Intern' }],
+      daily: '8h 00',
+      weekdayTargets: { [day]: '9h 00' }
+    }
+  });
+  assert.match(a.$('#balance').textContent, /\+0h 00/);
+  a.$('#daily').value = '10';
+  a.$('#daily').dispatchEvent(new a.window.Event('change', { bubbles: true }));
+  assert.match(a.$('#balance').textContent, /−1h 00/);
+  const data = JSON.parse(a.window.localStorage.getItem(STORE));
+  assert.equal(data.daily, '10');
+  assert.equal(data.weekdayTargets[day], '10');
 });
 
 test('Overview can select another date and save a booking for that date', async t => {
