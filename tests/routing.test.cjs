@@ -658,6 +658,8 @@ test('Calendar day without a booking does not open the entries view', async t =>
   day.click();
   await tick();
   assertView(a, 'calendar');
+  assert.match(a.$('#stableAgendaTitle').textContent, /September 2026/);
+  assert.equal(a.window.localStorage.getItem('professionelle-zeiterfassung.selected-entry-date'), '2026-09-09');
 });
 
 test('Overview mini-calendar day without a booking keeps the overview open', async t => {
@@ -670,6 +672,9 @@ test('Overview mini-calendar day without a booking keeps the overview open', asy
   emptyDay.click();
   await tick();
   assertView(a, 'overview');
+  assert.match(a.$('.entries .card-title').textContent, /9\.9\.2026/);
+  assert.equal(a.$('#workDate').value, '2026-09-09');
+  assert.equal(a.window.localStorage.getItem('professionelle-zeiterfassung.selected-entry-date'), '2026-09-09');
 });
 
 test('Clicking a weekly stats bar opens that exact day in entries', async t => {
