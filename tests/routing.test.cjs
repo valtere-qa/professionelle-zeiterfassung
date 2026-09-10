@@ -702,3 +702,24 @@ test('Daily target accepts hours and minutes and saves per-weekday settings', as
   monday.dispatchEvent(new a.window.Event('change', { bubbles: true }));
   assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).weekdayTargets.Mo, '8h 30');
 });
+
+test('Overview can select another date and save a booking for that date', async t => {
+  const other = '2026-09-09';
+  const a = await app(t, '#overview', {
+    [STORE]: { entries: [
+      { date: TODAY, minutes: 30, category: 'Testing', project: 'Intern', description: 'Heute' },
+      { date: other, minutes: 60, category: 'Meeting', project: 'Intern', description: 'Anderer Tag' }
+    ] }
+  });
+  const datePicker = a.$('#entriesDate');
+  assert.ok(datePicker, 'Overview exposes a date picker for daily bookings');
+  datePicker.value = other;
+  datePicker.dispatchEvent(new a.window.Event('change', { bubbles: true }));
+  assert.match(a.$('.entries .card-title').textContent, /9\.9\.2026/);
+  assert.match(a.$('#entryList').textContent, /Anderer Tag/);
+  assert.doesNotMatch(a.$('#entryList').textContent, /Heute/);
+  assert.equal(a.$('#workDate').value, other);
+  a.$('#addEntry').click();
+  const entries = JSON.parse(a.window.localStorage.getItem(STORE)).entries;
+  assert.equal(entries[0].date, other);
+});
