@@ -330,6 +330,38 @@ test('Notes page follows the OneNote reference structure when empty', async t =>
   assert.match(stable, /grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
 });
 
+test('Metric cards open their matching views', async t => {
+  const a = await app(t, '#overview', {
+    [STORE]: { entries: [{ date: TODAY, minutes: 30, category: 'Testing', project: 'Intern' }] },
+    ['professionelle-zeiterfassung.calendar.v1']: [{ id: 'reminder-1', title: 'Termin', type: 'Termin', date: '2026-09-12', reminder: 15 }]
+  });
+  const card = label => [...a.window.document.querySelectorAll('.metric')]
+    .find(item => item.querySelector('label')?.textContent.trim() === label);
+  assert.equal(a.window.document.querySelectorAll('.metric').length, 5);
+  assert.equal([...a.window.document.querySelectorAll('.metric')].every(item => item.getAttribute('role') === 'button'), true);
+
+  card('Heute').click();
+  await tick();
+  assertView(a, 'entries');
+  a.click('overview');
+  await tick();
+  card('Monatssaldo').click();
+  await tick();
+  assertView(a, 'stats');
+  a.click('overview');
+  await tick();
+  card('Pause').click();
+  await tick();
+  assertView(a, 'overview');
+  card('Tages-Saldo').click();
+  await tick();
+  assertView(a, 'overview');
+  card('Erinnerungen').click();
+  await tick();
+  assertView(a, 'calendar');
+  assert.equal(a.window.localStorage.getItem('professionelle-zeiterfassung.selected-entry-date'), '2026-09-12');
+});
+
 test('Empty checklist task shows a red validation message and focuses the field', async t => {
   const a = await app(t, '#notes', {
     [NOTES]: [{ id: 'note-1', title: 'Planung', content: '', tasks: [], color: 'blau', section: 'Arbeit' }]
