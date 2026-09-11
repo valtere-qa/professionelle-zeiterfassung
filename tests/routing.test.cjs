@@ -917,3 +917,28 @@ test('An existing booking exposes and saves its editable time', async t => {
   a.$('.stable-save').click();
   assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).entries[0].time, '09:30');
 });
+
+test('Mac-style date and time control changes the next booking defaults', async t => {
+  const other = '2026-09-08';
+  const a = await app(t, '#overview', { [STORE]: { entries: [] } });
+  a.$('#macDateTime').click();
+  assert.ok(a.$('#macBookingDate'));
+  assert.ok(a.$('#macBookingTime'));
+  a.$('#macBookingDate').value = other;
+  a.$('#macBookingTime').value = '06:30';
+  a.$('.stable-save').click();
+  assert.equal(a.$('#workDate').value, other);
+  assert.equal(a.$('#entryTime').value, '06:30');
+  assert.equal(a.window.localStorage.getItem('professionelle-zeiterfassung.selected-entry-date'), other);
+});
+
+test('Pause can be configured from the metric card in hours', async t => {
+  const a = await app(t, '#overview', { [STORE]: { entries: [], breakHours: '0.5' } });
+  assert.equal(a.$('#breakTotal').textContent, '0,5 Std.');
+  a.$('#editBreakMetric').click();
+  a.$('#metricBreakHours').value = '1,25';
+  a.$('.stable-save').click();
+  assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).breakHours, '1.25');
+  assert.equal(a.$('#breakTotal').textContent, '1,25 Std.');
+  assert.equal(a.$('#breakInput').value, '1.25');
+});
