@@ -325,6 +325,9 @@ test('Notes page follows the OneNote reference structure when empty', async t =>
   assert.ok(a.$('.stable-note-reference-theme'));
   assert.ok(a.$('.stable-notes-reference-empty'));
   assert.match(a.$('#dynamic').textContent, /Noch keine Notiz ausgewählt/);
+  const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
+  assert.match(stable, /grid-template-columns:360px minmax\(0,1fr\)/);
+  assert.match(stable, /grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
 });
 
 test('Empty checklist task shows a red validation message and focuses the field', async t => {
@@ -345,11 +348,13 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /Tagesabschluss/);
   assert.match(a.$('#dynamic').textContent, /Tagessaldo/);
   assert.match(a.$('#dynamic').textContent, /ausgewählte Datum/);
+  assert.match(a.$('#dynamic').textContent, /vollständig sichtbar/);
   a.$('[data-help-lang="fr"]').click();
   assert.match(a.$('#dynamic').textContent, /Saisies/);
   assert.match(a.$('#dynamic').textContent, /Calendrier/);
   assert.match(a.$('#dynamic').textContent, /date sélectionnée/);
   assert.match(a.$('#dynamic').textContent, /solde journalier/);
+  assert.match(a.$('#dynamic').textContent, /entièrement visibles/);
 });
 
 test('Stats page renders the professional analytics dashboard', async t => {
