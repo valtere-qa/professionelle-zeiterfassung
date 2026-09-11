@@ -23,6 +23,10 @@ window.ZeiterfassungAPI = {
   update(resource, resourceId, payload) { return apiRequest(`/api/${resource}/${resourceId}`, { method: "PATCH", body: JSON.stringify(payload) }); },
   remove(resource, resourceId) { return apiRequest(`/api/${resource}/${resourceId}`, { method: "DELETE" }); },
   saveSetting(key, value) { return apiRequest(`/api/settings/${encodeURIComponent(key)}`, { method: "PUT", body: JSON.stringify({ value }) }); },
+  enterpriseBootstrap() { return apiRequest("/api/enterprise/bootstrap"); },
+  enterpriseUpdate(path, payload) { return apiRequest(`/api/enterprise/${path}`, { method: "PUT", body: JSON.stringify(payload) }); },
+  enterpriseCreate(path, payload) { return apiRequest(`/api/enterprise/${path}`, { method: "POST", body: JSON.stringify(payload) }); },
+  enterpriseUpdateResource(path, payload) { return apiRequest(`/api/enterprise/${path}`, { method: "PATCH", body: JSON.stringify(payload) }); },
   hasSession() { return Boolean(sessionToken()); }
 };
 

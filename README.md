@@ -46,6 +46,17 @@ Responsive Zeiterfassung für **Valtère Fansi** mit Cloudflare Worker, D1-Daten
 - Name **Valtère Fansi** und Microsoft-Teams-/Fluent-Design
 - Responsive Desktop- und Mobile-Darstellung
 
+### Enterprise Center – Phase 1 bis 4
+
+Der Reiter **Organisation** bündelt die vier Ausbauphasen in einer präsentationsfähigen Oberfläche für den persönlichen Portfolio-Einsatz:
+
+- **Phase 1 – Organisation und Sicherheit:** Organisation, Standort, Sprache, Zeitzone, Abteilungen, Kostenstellen, Mitarbeitende, Rollen (Owner, Admin, HR, Manager, Auditor, Mitarbeitende), serverseitige Berechtigungen, Audit-Protokoll sowie vorbereitete SSO-/MFA-Anbindung.
+- **Phase 2 – Kontrolle und Compliance:** Vier-Augen-Freigaben, Periodenworkflow von Erfassung bis Sperre, kontrollierte Wiedereröffnung, konfigurierbare Arbeitszeitregeln, Pausen-/Ruhezeit-Prüfungen und die bestehende Abwesenheitslogik für Ferien und Krankheit.
+- **Phase 3 – HR, Payroll und Kosten:** Projektbudgets, Ist-Zeit, Auslastung, Kostenstellen-Sicht, CSV-/Payroll-Export, protokollierte Exportvorgänge und Management-Kennzahlen.
+- **Phase 4 – Betrieb und Integration:** Mobiler Kiosk-/Terminalfluss mit Arbeitsbeginn und Arbeitsende, Schichtplanung mit Arbeitsort und Pause, Kalender-/Projekt-/HR-/Payroll-Anschlussstellen, Status und letzter Synchronisationszeitpunkt, revisionsfähige Änderungsereignisse sowie mobile Darstellung.
+
+Die produktiven Connectoren sind bewusst als sichere Integrationspunkte angelegt: Für einen echten Finstar-Betrieb müssen der gewünschte SSO-/MFA-Anbieter, HR-/Payroll-Endpunkt, Kalenderzugriff und Aufbewahrungsfristen noch mit Firmenparametern und Secrets konfiguriert werden. Der Kiosk ist im persönlichen Portfolio-Modus lokal durchspielbar; die produktive Geräte-, PIN- und Identitätsverwaltung wird über diese Anschlussstellen angebunden. Die Oberfläche kennzeichnet Integrationen als vorbereitet, statt eine nicht vorhandene Produktivverbindung vorzutäuschen. Die Hilfe wurde um den Enterprise-Bereich auf Deutsch und Französisch erweitert.
+
 ## Bedienung
 
 1. Profil unten links öffnen und Einloggen oder Registrierung auswählen.
@@ -64,6 +75,8 @@ Responsive Zeiterfassung für **Valtère Fansi** mit Cloudflare Worker, D1-Daten
 - public/api.js: API-Client und Session-Verwaltung
 - public/extra.js: Buchungserfassung und Synchronisierung
 - public/apple-icons.js: zentrales Apple-inspiriertes SVG-Icon-System für statische und dynamische Oberflächen
+- public/enterprise.js: Enterprise Center für Organisation, Rollen, Freigaben, Compliance, Kosten, Integrationen und Schichten
+- migrations/0003_enterprise.sql: D1-Datenmodell für Organisationen, Rollen, Regeln, Perioden, Freigaben, Schichten, Integrationen, Leave-Balances, Payroll-Exports und Audit-Events
 - Die Hauptnavigation wird ausschließlich in `stable-ui.js` verarbeitet. Die alten Routing-Handler in `index.html` und `extra.js` sind entfernt; Buchungsfunktionen aus `extra.js` bleiben erhalten.
 
 ## Cloudflare
@@ -78,6 +91,8 @@ Migrationen und Deployment:
     bun install
     npx wrangler d1 migrations apply zeiterfassung-cloud-prod --remote
     npx wrangler deploy
+
+Für den Enterprise-Bereich muss `0003_enterprise.sql` vor dem ersten produktiven Aufruf mit angewendet werden. Der Worker enthält zusätzlich eine idempotente Schema-Sicherung für bestehende Installationen.
 
 E-Mail-Bestätigung und SMS sind als Integrationspunkt dokumentiert, aber erst nach Auswahl eines E-Mail-/SMS-Anbieters und Einrichtung der erforderlichen Cloudflare-Secrets aktivierbar.
 
@@ -107,7 +122,7 @@ Auf Desktop wird die App kompakt mit 90 % Skalierung dargestellt, damit mehr Inh
 
 ## Navigation und Darstellung
 
-- Clientseitige Routen: #overview, #entries, #week, #stats, #calendar, #notes, #categories, #favorites, #settings und #help
+- Clientseitige Routen: #overview, #entries, #week, #stats, #calendar, #notes, #categories, #favorites, #settings, #enterprise und #help
 - Reiter wechseln ohne vollständigen Seitenreload
 - Browser-Zurück und Vorwärts werden unterstützt
 - Direkte Links auf einzelne Reiter öffnen die passende Ansicht
@@ -115,7 +130,7 @@ Auf Desktop wird die App kompakt mit 90 % Skalierung dargestellt, damit mehr Inh
 - Neue Ansichten beginnen sofort am Seitenanfang, ohne animiertes Scrollen zu einem Abschnitt unter der Übersicht.
 - Ein erneuter Klick auf den aktiven Reiter erzeugt weder einen zusätzlichen Verlaufseintrag noch einen Neuaufbau des Editors.
 - „Zeit erfassen“ wechselt von jedem Reiter zur Übersicht und fokussiert das Eingabeformular.
-- Auf schmalen Bildschirmen sind alle zehn Reiter über eine horizontal verschiebbare Navigationsleiste erreichbar.
+- Auf schmalen Bildschirmen sind alle elf Reiter über eine horizontal verschiebbare Navigationsleiste erreichbar.
 - Desktop-Darstellung mit reduzierter 90-%-Skalierung; Mobile bleibt bei 100 %
 
 ## Tagesbuchungen mit Pagination
@@ -162,9 +177,9 @@ npm install
 npm test
 ```
 
-`tests/routing.test.cjs` führt die echte HTML-Datei mit allen eingebundenen App-Skripten in jsdom aus. Getestet werden alle zehn Reiter, Direktlinks, URL-Normalisierung, Browser-Verlauf, wiederholte Klicks, Notizentwürfe beim erneuten Öffnen desselben Reiters, „Zeit erfassen“, Daten-Aktualisierung, Tag-/Woche-Umschaltung und die Sichtbarkeit der Ansichten. Netzwerkanfragen sind simuliert; keine produktiven Daten werden verändert.
+`tests/routing.test.cjs` führt die echte HTML-Datei mit allen eingebundenen App-Skripten in jsdom aus. Getestet werden alle elf Reiter, Direktlinks, URL-Normalisierung, Browser-Verlauf, wiederholte Klicks, Notizentwürfe beim erneuten Öffnen desselben Reiters, „Zeit erfassen“, Daten-Aktualisierung, Tag-/Woche-Umschaltung, die Sichtbarkeit der Ansichten sowie die Enterprise-Flows für Organisation, Freigaben, Compliance und Integrationen. Netzwerkanfragen sind simuliert; keine produktiven Daten werden verändert.
 
-Ergebnis am 8. September 2026: **42 Tests bestanden, 0 fehlgeschlagen**. Die mobile Navigation wird zusätzlich anhand ihrer CSS-Regeln und mit simulierten Abmessungen geprüft; das zentrale SVG-Icon-System sowie Bearbeiten, Löschen und Pflichtfeldvalidierung mit Fokussteuerung werden geprüft.
+Aktueller automatisierter Stand: **73 Tests bestanden, 0 fehlgeschlagen**. Die mobile Navigation wird zusätzlich anhand ihrer CSS-Regeln und mit simulierten Abmessungen geprüft; das zentrale SVG-Icon-System, Bearbeiten, Löschen, Pflichtfeldvalidierung mit Fokussteuerung und die neuen Enterprise-Flows werden geprüft.
 
 Die Auswertung entspricht jetzt dem professionellen Dashboard-Aufbau: Zeitraumkopf, PDF-Aktion, sieben Kennzahlen, Wochenvergleich „Gebuchte Zeit vs. Tagessoll“ und Zeitverteilung nach Kategorie. Alle Werte werden aus den lokalen Buchungen berechnet und reagieren direkt auf Änderungen.
 
@@ -172,7 +187,7 @@ Der Reiter „Woche“ zeigt die aktuelle Arbeitswoche mit Arbeitsrahmen, Tages-
 
 Die gesamte App verwendet ein einheitliches 3D-Fluent-System: abgestufte Kartenflächen, dezente Tiefenschatten, erhöhte Primäraktionen, aktive Navigationsflächen, interaktive Eingabefelder und klare gedrückte/hover-/Fokus-Zustände. Auf Mobilgeräten werden die Tiefen reduziert, damit Bedienbarkeit und Performance erhalten bleiben.
 
-Zusätzliche Live-Prüfung am 8. September 2026: Alle zehn Reiter wurden in der veröffentlichten Cloudflare-App angeklickt. Jeweils nur die ausgewählte Ansicht war sichtbar, und der URL-Hash stimmte überein. Browser-Zurück/-Vorwärts, „Zeit erfassen“ mit Fokus auf dem Leistungsfeld sowie der Wechsel aus einer gescrollten Übersicht zum Seitenanfang wurden ebenfalls erfolgreich geprüft. Die ausgelieferte HTML-Datei entspricht dem korrigierten Stand `bc972e0`.
+Zusätzliche Live-Prüfung am 8. September 2026: Die damaligen zehn Reiter wurden in der veröffentlichten Cloudflare-App angeklickt. Der Enterprise-Reiter ist eine spätere Erweiterung und muss nach dem Anwenden der D1-Migration nochmals in der Zielumgebung geprüft werden.
 
 Das Kalenderformular stellt alle Felder einheitlich dar: gut lesbare Labels, 44 px hohe Eingabefelder, klare Abstände und eine sauber ausgerichtete Erinnerungsauswahl. Das Feld `Erinnerung vorher (persönlich pro Eintrag)` verknüpft Zahl und Einheit per Label; `Minute(n)`, `Stunde(n)`, `Tag(e)` und `Woche(n)` bleiben auch auf kleinen Bildschirmen vollständig sichtbar.
 
@@ -186,4 +201,4 @@ Beim Klick auf einen Kalendertag wird der ausgewählte Tag als Filter übernomme
 
 Der Notizen-Reiter folgt der OneNote-Referenz: Mini-OneNote-Kopf, Registerkarte „Alle Notizen“, Suche für Notizen und Subtasks sowie Filter für Kategorie, Unterkategorie und Thema. Bei leerem Bestand wird eine eigene, klar zentrierte Startansicht angezeigt; bestehende Farbmarkierungen und Checklisten bleiben vollständig bedienbar.
 
-Testgrenzen: jsdom prüft DOM und Ereignisse, jedoch keine Pixelpositionen oder reale Touch-Bedienung. Die Live-Prüfung erfolgte im Desktop-Browser; reale mobile Touch-Geräte wurden nicht geprüft. Datenbank-, Authentifizierungs-, Export- und Erinnerungsfunktionen wurden mit diesem Routing-Test nicht vollständig abgenommen.
+Testgrenzen: jsdom prüft DOM und Ereignisse, jedoch keine Pixelpositionen oder reale Touch-Bedienung. Die Live-Prüfung erfolgte im Desktop-Browser; reale mobile Touch-Geräte wurden nicht geprüft. Datenbank-, Authentifizierungs-, Export- und Erinnerungsfunktionen wurden mit diesem Routing-Test nicht vollständig abgenommen. Für die Vorstellung bei Finstar sollten anschließend die echten Identitäts-, HR- und Payroll-Schnittstellen in einer Testumgebung verbunden und mit Datenschutz, Rollenmodell sowie Aufbewahrung geprüft werden.

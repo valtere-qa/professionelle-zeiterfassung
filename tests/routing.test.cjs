@@ -12,7 +12,7 @@ const TODAY = new Date().toISOString().slice(0, 10);
 const routes = {
   overview: 'Übersicht', entries: 'Einträge', week: 'Woche', stats: 'Auswertung',
   calendar: 'Kalender', notes: 'Notizen', categories: 'Kategorien',
-  favorites: 'Favoriten', settings: 'Einstellungen', help: 'Hilfe'
+  favorites: 'Favoriten', settings: 'Einstellungen', enterprise: 'Organisation', help: 'Hilfe'
 };
 
 // Execute the actual delivered HTML and all its scripts. Network and scrolling
@@ -190,7 +190,7 @@ test('Routing preserves saved time, calendar and note data', async t => {
   for (const [key, value] of Object.entries(data)) assert.deepEqual(JSON.parse(a.window.localStorage.getItem(key)), value);
 });
 
-test('All ten mobile routes have a scrollable navigation rule instead of being hidden', async t => {
+test('All mobile routes have a scrollable navigation rule instead of being hidden', async t => {
   const a = await app(t, '#overview');
   const mobileRules = Array.from(a.window.document.styleSheets).flatMap(sheet =>
     Array.from(sheet.cssRules).filter(rule => rule.conditionText === '(max-width:780px)')
@@ -200,7 +200,7 @@ test('All ten mobile routes have a scrollable navigation rule instead of being h
   assert.equal(navRule.style.display, 'flex');
   assert.equal(navRule.style.getPropertyValue('overflow-x'), 'auto');
   assert.equal(buttonsRule.style.display, 'grid');
-  assert.equal(a.window.document.querySelectorAll('.nav [data-view]').length, 10);
+  assert.equal(a.window.document.querySelectorAll('.nav [data-view]').length, 11);
 });
 
 test('Mobile route selection reveals the active button inside the nav, not by scrolling the page sideways', async t => {
@@ -375,7 +375,8 @@ test('Empty checklist task shows a red validation message and focuses the field'
 
 test('Help provides German and French documentation for the app functions', async t => {
   const a = await app(t, '#help');
-  assert.equal(a.window.document.querySelectorAll('.stable-help-card').length, 10);
+  await tick();
+  assert.equal(a.window.document.querySelectorAll('.stable-help-card').length, 11);
   assert.match(a.$('#dynamic').textContent, /Timer/);
   assert.match(a.$('#dynamic').textContent, /Tagesabschluss/);
   assert.match(a.$('#dynamic').textContent, /Tagessaldo/);
@@ -383,12 +384,60 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /ausgewählte Datum/);
   assert.match(a.$('#dynamic').textContent, /vollständig sichtbar/);
   a.$('[data-help-lang="fr"]').click();
+  await tick();
   assert.match(a.$('#dynamic').textContent, /Saisies/);
   assert.match(a.$('#dynamic').textContent, /Calendrier/);
   assert.match(a.$('#dynamic').textContent, /date sélectionnée/);
   assert.match(a.$('#dynamic').textContent, /solde journalier/);
   assert.match(a.$('#dynamic').textContent, /solde mensuel.*objectif mensuel/);
   assert.match(a.$('#dynamic').textContent, /entièrement visibles/);
+  assert.match(a.$('#dynamic').textContent, /Organisation & gouvernance/);
+});
+
+test('Enterprise Center covers organization, approvals, policy and integrations', async t => {
+  const a = await app(t, '#enterprise', { [STORE]: { entries: [] } });
+  assert.match(a.$('#dynamic').textContent, /Organisation & Arbeitszeit-Governance/);
+  assert.equal(a.window.document.querySelectorAll('.enterprise-tabs [data-enterprise-tab]').length, 6);
+
+  a.$('[data-enterprise-tab="organization"]').click();
+  assert.ok(a.$('#enterpriseOrgName'));
+  a.$('#addEnterpriseMember').click();
+  a.$('#newMemberName').value = 'Neue Person';
+  a.$('#newMemberEmail').value = 'neue.person@example.com';
+  a.$('.enterprise-submit').click();
+  let enterprise = JSON.parse(a.window.localStorage.getItem('professionelle-zeiterfassung.enterprise.v1'));
+  assert.ok(enterprise.members.some(member => member.display_name === 'Neue Person'));
+
+  a.$('[data-enterprise-tab="approvals"]').click();
+  a.$('[data-approval="approval-demo"][data-decision="approved"]').click();
+  enterprise = JSON.parse(a.window.localStorage.getItem('professionelle-zeiterfassung.enterprise.v1'));
+  assert.equal(enterprise.approvals.find(item => item.id === 'approval-demo').status, 'approved');
+  a.$('[data-period-action="submit"]').click();
+  a.$('[data-period-action="approve"]').click();
+  a.$('[data-period-action="lock"]').click();
+  enterprise = JSON.parse(a.window.localStorage.getItem('professionelle-zeiterfassung.enterprise.v1'));
+  assert.equal(enterprise.periods.find(item => item.period_key === enterprise.periods[0].period_key).status, 'locked');
+
+  a.$('[data-enterprise-tab="compliance"]').click();
+  a.$('#policyMaxWeekly').value = '50';
+  a.$('#saveEnterprisePolicy').click();
+  enterprise = JSON.parse(a.window.localStorage.getItem('professionelle-zeiterfassung.enterprise.v1'));
+  assert.equal(enterprise.policies[0].max_weekly_minutes, 3000);
+
+  a.$('[data-enterprise-tab="integrations"]').click();
+  a.$('[data-integration-action="sso"]').click();
+  enterprise = JSON.parse(a.window.localStorage.getItem('professionelle-zeiterfassung.enterprise.v1'));
+  assert.equal(enterprise.integrations.find(item => item.integration_type === 'sso').status, 'connected');
+  a.$('#openEnterpriseKiosk').click();
+  assert.ok(a.$('#kioskAction'));
+  a.$('.enterprise-submit').click();
+  enterprise = JSON.parse(a.window.localStorage.getItem('professionelle-zeiterfassung.enterprise.v1'));
+  assert.ok(enterprise.kiosk.active_session);
+  a.$('#openEnterpriseKiosk').click();
+  a.$('.enterprise-submit').click();
+  enterprise = JSON.parse(a.window.localStorage.getItem('professionelle-zeiterfassung.enterprise.v1'));
+  assert.equal(enterprise.kiosk.active_session, null);
+  assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).entries[0].category, 'Kiosk');
 });
 
 test('Stats page renders the professional analytics dashboard', async t => {
@@ -440,8 +489,8 @@ test('Apple-inspired SVG icons replace static and dynamic symbols throughout the
   const icons = readFileSync(resolve(publicDir, 'apple-icons.js'), 'utf8');
   assert.match(index, /apple-icons\.js\?v=20260908-1/);
   assert.match(icons, /class="apple-icon"/);
-  assert.ok(a.window.document.querySelectorAll('.nav .apple-icon').length >= 10);
-  assert.equal(a.window.document.querySelectorAll('.nav i').length, 10);
+  assert.ok(a.window.document.querySelectorAll('.nav .apple-icon').length >= 11);
+  assert.equal(a.window.document.querySelectorAll('.nav i').length, 11);
   assert.ok([...a.window.document.querySelectorAll('.nav i')].every(node => node.querySelector('.apple-icon')));
   a.click('calendar');
   await tick();
