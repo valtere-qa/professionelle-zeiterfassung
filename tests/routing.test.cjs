@@ -379,6 +379,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /Timer/);
   assert.match(a.$('#dynamic').textContent, /Tagesabschluss/);
   assert.match(a.$('#dynamic').textContent, /Tagessaldo/);
+  assert.match(a.$('#dynamic').textContent, /Monatssaldo.*monatliche Sollzeit/);
   assert.match(a.$('#dynamic').textContent, /ausgewählte Datum/);
   assert.match(a.$('#dynamic').textContent, /vollständig sichtbar/);
   a.$('[data-help-lang="fr"]').click();
@@ -386,6 +387,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /Calendrier/);
   assert.match(a.$('#dynamic').textContent, /date sélectionnée/);
   assert.match(a.$('#dynamic').textContent, /solde journalier/);
+  assert.match(a.$('#dynamic').textContent, /solde mensuel.*objectif mensuel/);
   assert.match(a.$('#dynamic').textContent, /entièrement visibles/);
 });
 
@@ -769,6 +771,10 @@ test('Absence dates are greyed out and block time capture', async t => {
   const a = await app(t, '#overview', {
     [STORE]: { entries: [], daily: '8h 30', absences: [{ id: 'absence-1', type: 'Ferien', start: TODAY, end: TODAY }] }
   });
+  assert.equal(a.$('#todayTotal').textContent, '0h 00');
+  assert.equal(a.$('#todayTotal').closest('.metric').querySelector('label').textContent, 'Ferien');
+  assert.match(a.$('#absenceMetricNote').textContent, /Ferien.*0h 00/);
+  assert.equal(a.$('#monthBalance').textContent, '−178h 30');
   assert.equal(a.$('#addEntry').disabled, true);
   assert.equal(a.$('#timer').disabled, true);
   assert.match(a.$('#qualityTitle').textContent, /Ferien/);
@@ -777,6 +783,33 @@ test('Absence dates are greyed out and block time capture', async t => {
   a.$('#days button.absence-day').click();
   assertView(a, 'overview');
   assert.match(a.$('#qualityTitle').textContent, /Ferien/);
+});
+
+test('Absence days are excluded from the evaluation and marked with zero', async t => {
+  const previous = new Date(TODAY + 'T12:00:00');
+  previous.setDate(previous.getDate() - 1);
+  const previousDate = previous.toISOString().slice(0, 10);
+  const a = await app(t, '#stats', {
+    [STORE]: {
+      entries: [
+        { date: TODAY, minutes: 90, category: 'Testing', project: 'Intern' },
+        { date: previousDate, minutes: 60, category: 'Meeting', project: 'Intern' }
+      ],
+      weekly: '42h 00',
+      daily: '8h 00',
+      absences: [{ id: 'absence-stats', type: 'Krankheit', start: TODAY, end: TODAY }]
+    }
+  });
+  assert.match(a.$('.stats-hero').textContent, /Krankheit/);
+  assert.match(a.$('.stats-metrics article strong').textContent, /1h 00/);
+  const absenceBar = a.$('.stats-bar-col[data-stats-date="' + TODAY + '"]');
+  assert.ok(absenceBar);
+  assert.match(absenceBar.textContent, /0h 00/);
+  assert.match(absenceBar.textContent, /Krankheit/);
+  absenceBar.click();
+  await tick();
+  assertView(a, 'overview');
+  assert.match(a.$('#qualityTitle').textContent, /Krankheit/);
 });
 
 test('Stable calendar marks absence dates and explains that no booking is needed', async t => {
@@ -860,4 +893,27 @@ test('Entries view can select another date and start a booking for that date', a
   assertView(a, 'overview');
   assert.equal(a.$('#workDate').value, other);
   assert.equal(a.window.localStorage.getItem('professionelle-zeiterfassung.selected-entry-date'), other);
+});
+
+test('A booking stores a manually selected date and time', async t => {
+  const other = '2026-09-09';
+  const a = await app(t, '#overview', { [STORE]: { entries: [] } });
+  a.$('#entriesDate').value = other;
+  a.$('#entriesDate').dispatchEvent(new a.window.Event('change', { bubbles: true }));
+  a.$('#entryTime').value = '07:45';
+  a.$('#addEntry').click();
+  const entry = JSON.parse(a.window.localStorage.getItem(STORE)).entries[0];
+  assert.equal(entry.date, other);
+  assert.equal(entry.time, '07:45');
+});
+
+test('An existing booking exposes and saves its editable time', async t => {
+  const a = await app(t, '#overview', {
+    [STORE]: { entries: [{ date: TODAY, time: '08:15', minutes: 30, category: 'Testing', project: 'Intern' }] }
+  });
+  a.$('#entryList [data-entry-edit]').click();
+  assert.equal(a.$('#seTime').value, '08:15');
+  a.$('#seTime').value = '09:30';
+  a.$('.stable-save').click();
+  assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).entries[0].time, '09:30');
 });
