@@ -8,6 +8,8 @@ const publicDir = resolve(__dirname, '../public');
 const html = readFileSync(resolve(publicDir, 'index.html'), 'utf8');
 const STORE = 'professionelle-zeiterfassung.v2';
 const NOTES = 'professionelle-zeiterfassung.notes.v1';
+const ENTERPRISE = 'professionelle-zeiterfassung.enterprise.v1';
+const SESSION = 'professionelle-zeiterfassung.session';
 const TODAY = new Date().toISOString().slice(0, 10);
 const routes = {
   overview: 'Übersicht', entries: 'Einträge', week: 'Woche', stats: 'Auswertung',
@@ -438,6 +440,41 @@ test('Enterprise Center covers organization, approvals, policy and integrations'
   enterprise = JSON.parse(a.window.localStorage.getItem('professionelle-zeiterfassung.enterprise.v1'));
   assert.equal(enterprise.kiosk.active_session, null);
   assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).entries[0].category, 'Kiosk');
+});
+
+test('Enterprise view normalizes incomplete data and survives a storage refresh', async t => {
+  const a = await app(t, '#enterprise', {
+    [ENTERPRISE]: {
+      organization: { name: 'Stabile Organisation' },
+      members: 'ungültig', departments: [null], policies: {}, periods: 'ungültig',
+      approvals: [null], shifts: null, integrations: 'ungültig', leave_balances: 'ungültig',
+      audit: 'ungültig', kiosk: { active_session: 'ungültig' }
+    }
+  });
+  for (const tab of ['overview', 'organization', 'approvals', 'compliance', 'projects', 'integrations']) {
+    a.$(`[data-enterprise-tab="${tab}"]`).click();
+    assert.ok(a.$('.enterprise-content').textContent.trim(), `Tab ${tab} bleibt benutzbar`);
+  }
+  a.window.localStorage.setItem(ENTERPRISE, JSON.stringify({ organization: { name: 'Aktualisierte Organisation' }, members: 'ungültig' }));
+  await tick();
+  assert.equal(a.window.location.hash, '#enterprise');
+  assert.match(a.$('#dynamic').textContent, /Aktualisierte Organisation/);
+});
+
+test('Enterprise sync does not overwrite a local change made during a delayed response', async t => {
+  const a = await app(t, '#enterprise', { [STORE]: { entries: [] } });
+  a.window.localStorage.setItem(SESSION, 'test-token');
+  let resolveBootstrap;
+  a.window.ZeiterfassungAPI.enterpriseBootstrap = () => new Promise(resolve => { resolveBootstrap = resolve; });
+  a.window.EnterpriseUI.sync();
+  await tick();
+  a.$('[data-enterprise-tab="organization"]').click();
+  a.$('#enterpriseOrgName').value = 'Lokale Änderung';
+  a.$('#enterpriseOrgCode').value = 'LOCAL';
+  a.$('#saveEnterpriseOrg').click();
+  resolveBootstrap({ organization: { name: 'Serverantwort', code: 'REMOTE' } });
+  await tick();
+  assert.equal(JSON.parse(a.window.localStorage.getItem(ENTERPRISE)).organization.name, 'Lokale Änderung');
 });
 
 test('Stats page renders the professional analytics dashboard', async t => {

@@ -55,7 +55,7 @@ Der Reiter **Organisation** bündelt die vier Ausbauphasen in einer präsentatio
 - **Phase 3 – HR, Payroll und Kosten:** Projektbudgets, Ist-Zeit, Auslastung, Kostenstellen-Sicht, CSV-/Payroll-Export, protokollierte Exportvorgänge und Management-Kennzahlen.
 - **Phase 4 – Betrieb und Integration:** Mobiler Kiosk-/Terminalfluss mit Arbeitsbeginn und Arbeitsende, Schichtplanung mit Arbeitsort und Pause, Kalender-/Projekt-/HR-/Payroll-Anschlussstellen, Status und letzter Synchronisationszeitpunkt, revisionsfähige Änderungsereignisse sowie mobile Darstellung.
 
-Die produktiven Connectoren sind bewusst als sichere Integrationspunkte angelegt: Für einen echten Finstar-Betrieb müssen der gewünschte SSO-/MFA-Anbieter, HR-/Payroll-Endpunkt, Kalenderzugriff und Aufbewahrungsfristen noch mit Firmenparametern und Secrets konfiguriert werden. Der Kiosk ist im persönlichen Portfolio-Modus lokal durchspielbar; die produktive Geräte-, PIN- und Identitätsverwaltung wird über diese Anschlussstellen angebunden. Die Oberfläche kennzeichnet Integrationen als vorbereitet, statt eine nicht vorhandene Produktivverbindung vorzutäuschen. Die Hilfe wurde um den Enterprise-Bereich auf Deutsch und Französisch erweitert.
+Die produktiven Connectoren sind bewusst als sichere Integrationspunkte angelegt: Für einen echten Finstar-Betrieb müssen der gewünschte SSO-/MFA-Anbieter, HR-/Payroll-Endpunkt, Kalenderzugriff und Aufbewahrungsfristen noch mit Firmenparametern und Secrets konfiguriert werden. Der Kiosk ist im persönlichen Portfolio-Modus lokal durchspielbar; die produktive Geräte-, PIN- und Identitätsverwaltung wird über diese Anschlussstellen angebunden. Die Oberfläche kennzeichnet Integrationen als vorbereitet, statt eine nicht vorhandene Produktivverbindung vorzutäuschen. Die Hilfe wurde um den Enterprise-Bereich auf Deutsch und Französisch erweitert und dokumentiert jetzt auch Synchronisierung, lokalen Fallback und das Zurücksetzen der Demo-Daten.
 
 ## Bedienung
 
@@ -179,7 +179,7 @@ npm test
 
 `tests/routing.test.cjs` führt die echte HTML-Datei mit allen eingebundenen App-Skripten in jsdom aus. Getestet werden alle elf Reiter, Direktlinks, URL-Normalisierung, Browser-Verlauf, wiederholte Klicks, Notizentwürfe beim erneuten Öffnen desselben Reiters, „Zeit erfassen“, Daten-Aktualisierung, Tag-/Woche-Umschaltung, die Sichtbarkeit der Ansichten sowie die Enterprise-Flows für Organisation, Freigaben, Compliance und Integrationen. Netzwerkanfragen sind simuliert; keine produktiven Daten werden verändert.
 
-Aktueller automatisierter Stand: **73 Tests bestanden, 0 fehlgeschlagen**. Die mobile Navigation wird zusätzlich anhand ihrer CSS-Regeln und mit simulierten Abmessungen geprüft; das zentrale SVG-Icon-System, Bearbeiten, Löschen, Pflichtfeldvalidierung mit Fokussteuerung und die neuen Enterprise-Flows werden geprüft.
+Aktueller automatisierter Stand: **75 Tests bestanden, 0 fehlgeschlagen**. Die mobile Navigation wird zusätzlich anhand ihrer CSS-Regeln und mit simulierten Abmessungen geprüft; das zentrale SVG-Icon-System, Bearbeiten, Löschen, Pflichtfeldvalidierung mit Fokussteuerung, die neuen Enterprise-Flows sowie robuste Organisationsdaten und verzögerte Synchronisierung werden geprüft.
 
 Die Auswertung entspricht jetzt dem professionellen Dashboard-Aufbau: Zeitraumkopf, PDF-Aktion, sieben Kennzahlen, Wochenvergleich „Gebuchte Zeit vs. Tagessoll“ und Zeitverteilung nach Kategorie. Alle Werte werden aus den lokalen Buchungen berechnet und reagieren direkt auf Änderungen.
 
