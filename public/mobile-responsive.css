@@ -264,8 +264,8 @@
 @media (max-width: 780px) {
   html, body { min-height: 100%; height: auto !important; overflow-x: hidden !important; overflow-y: auto !important; position: static !important; }
   body { scroll-padding-bottom: 132px; -webkit-overflow-scrolling: touch; }
-  .shell, main { height: auto !important; min-height: 100dvh; position: static !important; overflow: visible !important; }
-  main { touch-action: pan-y; padding-bottom: calc(132px + env(safe-area-inset-bottom)); }
+  .shell { height: 100dvh; min-height: 100dvh; position: static !important; overflow: visible !important; }
+  main { height: 100dvh; max-height: 100dvh; min-height: 100dvh; position: static !important; overflow-x: hidden !important; overflow-y: auto !important; overscroll-behavior-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; padding-bottom: calc(132px + env(safe-area-inset-bottom)); }
   #dynamic { height: auto !important; max-height: none !important; min-height: 0; overflow: visible !important; padding-bottom: 24px; }
   #dynamic > * { max-height: none; }
   #dynamic .stats-columns,
@@ -276,6 +276,7 @@
   #dynamic .stats-chart { width: 100%; max-width: 100%; overflow-x: auto; overflow-y: visible; }
   #dynamic .enterprise-content,
   #dynamic .enterprise-shell { overflow: visible !important; }
+  .sidebar .nav { touch-action: pan-x; overscroll-behavior-x: contain; }
   #dynamic .enterprise-tabs { touch-action: pan-x; overscroll-behavior-x: contain; }
   #dynamic .enterprise-card { max-width: 100%; overflow: visible; }
 }

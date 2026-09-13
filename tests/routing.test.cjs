@@ -298,7 +298,7 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.equal(a.$('#pdf').textContent.includes('PDF'), true);
   assert.ok(a.$('#entriesToday'));
   assert.ok(a.$('#overviewCalendarToday'));
-  assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-3/);
+  assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-4/);
   const mobile = readFileSync(resolve(publicDir, 'mobile-responsive.css'), 'utf8');
   assert.match(mobile, /safe-area-inset-bottom/);
   assert.match(mobile, /grid-template-columns: repeat\\(2, minmax\\(0, 1fr\\)\\)/);
@@ -309,7 +309,7 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.match(mobile, /overflow-y: auto/);
   assert.match(mobile, /scroll-padding-bottom/);
   assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-5/);
-  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-7/);
+  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-8/);
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
   assert.match(stable, /#overviewView>\.work\{|\.metrics\{gap:10px;margin:0 0 20px/);
 });
