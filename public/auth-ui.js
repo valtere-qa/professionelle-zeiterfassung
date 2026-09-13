@@ -2,7 +2,8 @@
   const api = () => window.ZeiterfassungAPI;
   const SESSION_KEY = "professionelle-zeiterfassung.session";
   const LOGGED_OUT_KEY = "professionelle-zeiterfassung.logged-out";
-  let currentUser = null;
+  let currentUser = null, syncState = "unknown", syncMessage = "";
+  const syncLabel = state => state === "syncing" ? "Synchronisierung läuft …" : state === "retry" ? "Offline – nächster Versuch automatisch" : state === "conflict-resolved" ? "Änderung abgeglichen" : state === "unknown" ? "Synchronisierung wird geprüft …" : "Synchronisiert";
   const escapeHtml = value => String(value ?? "").replace(/[&<>\"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[char]));
   const closeAuth = () => document.querySelector(".auth-overlay")?.remove();
   const setAppLocked = locked => {
@@ -42,8 +43,11 @@
   }
   window.addEventListener("zeiterfassung-sync-status", event => {
     const node = document.querySelector("#authSyncStatus"), state = event.detail?.state;
+    syncState = state || "unknown";
+    syncMessage = event.detail?.message || "";
     if (!node) return;
-    node.textContent = state === "syncing" ? "Synchronisierung läuft …" : state === "retry" ? "Offline – nächster Versuch automatisch" : state === "conflict-resolved" ? "Änderung abgeglichen" : "Synchronisiert";
+    node.textContent = syncLabel(syncState);
+    node.title = syncMessage;
   });
   window.addEventListener("zeiterfassung-remote-change", event => {
     document.querySelector(".sync-change-notice")?.remove();
@@ -55,7 +59,9 @@
   });
   const showMenu = () => {
     const existing = document.querySelector(".auth-menu"); if (existing) { existing.remove(); return; }
-    const menu = document.createElement("div"); menu.className = "auth-menu"; menu.setAttribute("role", "menu"); menu.innerHTML = "<div class='auth-status' id='authStatus'>Status wird geprüft …</div><div class='auth-status' id='authSyncStatus'>Synchronisierung wird geprüft …</div><button id='authNotifications'>♧ Gerätebenachrichtigungen aktivieren</button><button id='authLogin'>↪ Einloggen</button><button id='authRegister'>＋ Registrierung</button><button id='authAdminInvite' hidden>＋ Neuen Benutzer einladen</button><button id='authBackup'>⇩ Datensicherung</button><button id='authRestore'>⇧ Sicherung laden</button><hr><button id='authLogout' class='auth-danger'>⇥ Ausloggen</button>"; document.body.append(menu); setProfile(currentUser);
+    const menu = document.createElement("div"); menu.className = "auth-menu"; menu.setAttribute("role", "menu"); menu.innerHTML = "<div class='auth-status' id='authStatus'>Status wird geprüft …</div><div class='auth-status' id='authSyncStatus'>Synchronisierung wird geprüft …</div><button id='authNotifications'>♧ Gerätebenachrichtigungen aktivieren</button><button id='authLogin'>↪ Einloggen</button><button id='authRegister'>＋ Registrierung</button><button id='authAdminInvite' hidden>＋ Neuen Benutzer einladen</button><button id='authBackup'>⇩ Datensicherung</button><button id='authRestore'>⇧ Sicherung laden</button><hr><button id='authLogout' class='auth-danger'>⇥ Ausloggen</button>"; document.body.append(menu); setProfile(currentUser); const syncNode = menu.querySelector("#authSyncStatus"); if (syncNode) { syncNode.textContent = syncLabel(syncState); syncNode.title = syncMessage; }
+    const syncNow = document.createElement("button"); syncNow.id = "authSyncNow"; syncNow.className = "auth-quick"; syncNow.type = "button"; syncNow.textContent = "↻ Jetzt synchronisieren"; menu.insertBefore(syncNow, menu.querySelector("#authNotifications"));
+    syncNow.onclick = async () => { syncNow.disabled = true; syncNow.textContent = "Synchronisierung läuft …"; const success = await window.ZeiterfassungCloudSync?.sync?.(); syncNow.disabled = false; syncNow.textContent = success ? "✓ Synchronisiert" : "↻ Erneut versuchen"; };
     menu.querySelector("#authNotifications").onclick = async () => { const result = await window.ZeiterfassungCloudSync?.requestNotifications?.(); const node = menu.querySelector("#authSyncStatus"); if (node) node.textContent = result === "granted" ? "Gerätebenachrichtigungen aktiviert" : result === "unsupported" ? "Dieser Browser unterstützt keine Benachrichtigungen" : "Benachrichtigungen nicht aktiviert"; }; menu.querySelector("#authLogin").onclick = () => { menu.remove(); openAuth("login"); }; menu.querySelector("#authRegister").onclick = () => { menu.remove(); openAuth("register"); }; menu.querySelector("#authAdminInvite").onclick = () => { menu.remove(); openInvite(); };
     menu.querySelector("#authBackup").onclick = () => { const payload = { time: JSON.parse(localStorage.getItem("professionelle-zeiterfassung.v2") || "{}"), calendar: JSON.parse(localStorage.getItem("professionelle-zeiterfassung.calendar.v1") || "[]"), notes: JSON.parse(localStorage.getItem("professionelle-zeiterfassung.notes.v1") || "[]"), reminders: JSON.parse(localStorage.getItem("professionelle-zeiterfassung.reminders.v1") || localStorage.getItem("professionelle-zeiterfassung.reminders") || "{}") }; const link = document.createElement("a"); link.download = "zeiterfassung-backup.json"; link.href = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })); link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000); };
     menu.querySelector("#authRestore").onclick = () => { const input = document.createElement("input"); input.type = "file"; input.accept = "application/json,.json"; input.onchange = async () => { try { const payload = JSON.parse(await input.files[0].text()); if (payload.time) localStorage.setItem("professionelle-zeiterfassung.v2", JSON.stringify(payload.time)); if (payload.calendar) localStorage.setItem("professionelle-zeiterfassung.calendar.v1", JSON.stringify(payload.calendar)); if (payload.notes) localStorage.setItem("professionelle-zeiterfassung.notes.v1", JSON.stringify(payload.notes)); if (payload.reminders) localStorage.setItem("professionelle-zeiterfassung.reminders.v1", JSON.stringify(payload.reminders)); toast("Sicherung geladen und Synchronisierung gestartet."); } catch { toast("Die Sicherungsdatei ist ungültig."); } }; input.click(); };
