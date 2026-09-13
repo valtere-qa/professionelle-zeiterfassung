@@ -1016,11 +1016,11 @@ test('Cloud GET requests retry once after a transient connection failure', async
   assert.equal(stateAttempts, 2);
 });
 
-test('An empty cloud snapshot never deletes any existing profile data', async t => {
+test('A partial cloud snapshot never deletes any existing profile data', async t => {
   let puts = 0;
   const fetch = async (url, options = {}) => {
     if (String(url).endsWith('/api/auth/me')) return { ok: true, json: async () => ({ user: { id: 'u1', name: 'Valtère', email: 'v@example.ch' } }) };
-    if (String(url).endsWith('/api/state') && (options.method || 'GET') === 'GET') return { ok: true, json: async () => ({ exists: true, state: {}, version: 2 }) };
+    if (String(url).endsWith('/api/state') && (options.method || 'GET') === 'GET') return { ok: true, json: async () => ({ exists: true, state: { [STORE]: JSON.stringify({ notes: [{ id: 'remote-note' }] }) }, version: 2 }) };
     if (String(url).endsWith('/api/state') && options.method === 'PUT') { puts += 1; return { ok: true, json: async () => ({ ok: true, version: 3 }) }; }
     if (String(url).endsWith('/api/bootstrap')) return { ok: true, json: async () => ({ calendar_events: [], notes: [] }) };
     return { ok: false, json: async () => ({ error: 'Unexpected test request' }) };
