@@ -299,8 +299,8 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.ok(a.$('#entriesToday'));
   assert.ok(a.$('#overviewCalendarToday'));
   assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-3/);
-  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-11/);
-  assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-6/);
+  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-12/);
+  assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-7/);
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
   assert.match(stable, /#overviewView>\.work\{|\.metrics\{gap:10px;margin:0 0 20px/);
   const mobile = readFileSync(resolve(publicDir, 'mobile-responsive.css'), 'utf8');
@@ -320,6 +320,7 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.match(mobile, /overflow-y: scroll !important/);
   assert.match(mobile, /overflow-y: visible !important/);
   assert.match(mobile, /scrollbar-gutter: stable/);
+  assert.match(mobile, /padding-bottom: calc\(160px \+ env\(safe-area-inset-bottom\)\) !important/);
   assert.match(mobile, /\.sidebar \.nav/);
 });
 
@@ -414,6 +415,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /Alle Ansichten von Kategorien/);
   assert.match(a.$('#dynamic').textContent, /einheitlicher vertikaler Seiten-Scrollbereich/);
   assert.match(a.$('#dynamic').textContent, /native Scrollbalken kann bis zum Seitenende bewegt werden/);
+  assert.match(a.$('#dynamic').textContent, /360‑px‑Display/);
   assert.match(a.$('#dynamic').textContent, /Professionelle Exporte/);
   assert.match(a.$('#dynamic').textContent, /Timer-Buchungen/);
   assert.match(a.$('#dynamic').textContent, /Semikolon/);

@@ -296,9 +296,9 @@
     scroll-padding-bottom: 160px;
   }
   main {
-    padding-bottom: calc(160px + env(safe-area-inset-bottom));
+    padding-bottom: calc(160px + env(safe-area-inset-bottom)) !important;
   }
   #dynamic {
-    padding-bottom: 40px;
+    padding-bottom: 40px !important;
   }
 }
