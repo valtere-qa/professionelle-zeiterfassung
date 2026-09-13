@@ -1045,6 +1045,8 @@ test('Registration protection and admin invitation endpoints are defined server-
   assert.match(worker, /CREATE TABLE IF NOT EXISTS user_states/);
   assert.match(worker, /updated_by_device/);
   assert.match(worker, /updated_by_label/);
+  assert.match(worker, /function mergeStatePayload/);
+  assert.match(worker, /const existingRow = await env\.DB\.prepare\("SELECT payload_json FROM user_states/);
   assert.match(worker, /CREATE TABLE IF NOT EXISTS admin_invites/);
   assert.match(worker, /Die Registrierung ist geschützt/);
   assert.match(worker, /Nur Owner, Admin oder HR dürfen Benutzer einladen/);
