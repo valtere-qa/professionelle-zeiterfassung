@@ -41,12 +41,16 @@ async function ensureSchema(env) {
     CREATE TABLE IF NOT EXISTS calendar_events (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, event_type TEXT NOT NULL DEFAULT 'Termin', title TEXT NOT NULL, event_date TEXT NOT NULL, all_day INTEGER NOT NULL DEFAULT 0, start_time TEXT, end_time TEXT, place TEXT, reminder_minutes INTEGER NOT NULL DEFAULT 0, note TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS notes (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, title TEXT NOT NULL, content TEXT NOT NULL, checklist_json TEXT NOT NULL DEFAULT '[]', color TEXT NOT NULL DEFAULT 'blau', section TEXT NOT NULL DEFAULT 'Arbeit', archived INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS user_states (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, payload_json TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL, updated_by_device TEXT, updated_by_label TEXT);
+    CREATE TABLE IF NOT EXISTS absences (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, absence_type TEXT NOT NULL, start_date TEXT NOT NULL, end_date TEXT NOT NULL, note TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS closed_days (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, closed_date TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(user_id, closed_date));
     CREATE TABLE IF NOT EXISTS admin_invites (id TEXT PRIMARY KEY, created_by TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, organization_id TEXT, email TEXT, code_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, used_at TEXT, created_at TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS idx_calendar_user_date ON calendar_events(user_id,event_date);
     CREATE INDEX IF NOT EXISTS idx_notes_user_updated ON notes(user_id,updated_at);
     CREATE INDEX IF NOT EXISTS idx_entries_user_date ON entries(user_id,entry_date);
     CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token_hash);
     CREATE INDEX IF NOT EXISTS idx_admin_invites_hash ON admin_invites(code_hash);
+    CREATE INDEX IF NOT EXISTS idx_absences_user_date ON absences(user_id,start_date,end_date);
+    CREATE INDEX IF NOT EXISTS idx_closed_days_user_date ON closed_days(user_id,closed_date);
     `);
     try { await env.DB.exec("ALTER TABLE notes ADD COLUMN section TEXT NOT NULL DEFAULT 'Arbeit'"); } catch {}
     try { await env.DB.exec("ALTER TABLE admin_invites ADD COLUMN organization_id TEXT"); } catch {}
@@ -180,14 +184,16 @@ const enterpriseRoles = ["owner", "admin", "hr", "manager", "auditor", "employee
 const syncStatePrefix = "professionelle-zeiterfassung.";
 
 async function legacyState(env, user) {
-  const [entries, categories, projects, favorites, settings, calendarEvents, notes] = await Promise.all([
+  const [entries, categories, projects, favorites, settings, calendarEvents, notes, absences, closedDays] = await Promise.all([
     env.DB.prepare("SELECT * FROM entries WHERE user_id=? ORDER BY entry_date DESC, start_time DESC LIMIT 500").bind(user.id).all(),
     env.DB.prepare("SELECT * FROM categories WHERE user_id=? ORDER BY name").bind(user.id).all(),
     env.DB.prepare("SELECT * FROM projects WHERE user_id=? ORDER BY name").bind(user.id).all(),
     env.DB.prepare("SELECT * FROM favorites WHERE user_id=? ORDER BY label").bind(user.id).all(),
     env.DB.prepare("SELECT key,value FROM settings WHERE user_id=?").bind(user.id).all(),
     env.DB.prepare("SELECT * FROM calendar_events WHERE user_id=? ORDER BY event_date,start_time").bind(user.id).all(),
-    env.DB.prepare("SELECT * FROM notes WHERE user_id=? ORDER BY updated_at DESC").bind(user.id).all()
+    env.DB.prepare("SELECT * FROM notes WHERE user_id=? ORDER BY updated_at DESC").bind(user.id).all(),
+    env.DB.prepare("SELECT * FROM absences WHERE user_id=? ORDER BY start_date").bind(user.id).all(),
+    env.DB.prepare("SELECT closed_date FROM closed_days WHERE user_id=? ORDER BY closed_date").bind(user.id).all()
   ]);
   const categoryNames = Object.fromEntries(categories.results.map(item => [item.id, item.name]));
   const projectNames = Object.fromEntries(projects.results.map(item => [item.id, item.name]));
@@ -199,11 +205,75 @@ async function legacyState(env, user) {
       favorites: favorites.results.map(item => ({ label: item.label, category: categoryNames[item.category_id] || "", project: projectNames[item.project_id] || "", duration_minutes: item.duration_minutes || 0 })),
       daily: settings.results.find(item => item.key === "daily")?.value || "8h 00",
       weekly: settings.results.find(item => item.key === "weekly")?.value || "40h 00",
-      breakHours: settings.results.find(item => item.key === "breakHours")?.value || ".5"
+      breakHours: settings.results.find(item => item.key === "breakHours")?.value || ".5",
+      absences: absences.results.map(item => ({ id: item.id, type: item.absence_type, start: item.start_date, end: item.end_date, note: item.note || "" })),
+      closedDays: closedDays.results.map(item => item.closed_date)
     }),
     [syncStatePrefix + "calendar.v1"]: JSON.stringify(calendarEvents.results.map(item => ({ id: item.id, title: item.title, type: item.event_type, date: item.event_date, allDay: Boolean(item.all_day), start: item.start_time || "", end: item.end_time || "", place: item.place || "", reminder: Number(item.reminder_minutes || 0), note: item.note || "" }))),
-    [syncStatePrefix + "notes.v1"]: JSON.stringify(notes.results.map(item => ({ id: item.id, title: item.title, content: item.content, color: item.color, section: item.section || "Arbeit", tasks: JSON.parse(item.checklist_json || "[]"), created: item.created_at })))
+    [syncStatePrefix + "notes.v1"]: JSON.stringify(notes.results.map(item => ({ id: item.id, title: item.title, content: item.content, color: item.color, section: item.section || "Arbeit", tasks: stateJson({ checklist: item.checklist_json }, "checklist", []), created: item.created_at })))
   };
+}
+
+const stateJson = (state, key, fallback) => {
+  try {
+    const value = JSON.parse(state[key] || "null");
+    return value ?? fallback;
+  } catch {
+    return fallback;
+  }
+};
+const stateName = value => {
+  if (typeof value === "string" || typeof value === "number") return String(value).trim();
+  if (!value || typeof value !== "object") return "";
+  return stateName(value.name ?? value.label ?? value.title ?? value.display_name ?? value.value);
+};
+const uniqueNames = values => [...new Set((Array.isArray(values) ? values : []).map(stateName).filter(Boolean))];
+
+function structuredStateStatements(env, user, state, timestamp) {
+  const main = stateJson(state, syncStatePrefix + "v2", {});
+  const calendar = stateJson(state, syncStatePrefix + "calendar.v1", []);
+  const notes = stateJson(state, syncStatePrefix + "notes.v1", []);
+  const categories = uniqueNames(main.categories);
+  const projects = uniqueNames(main.projects);
+  const entries = Array.isArray(main.entries) ? main.entries : [];
+  entries.forEach(entry => {
+    const category = stateName(entry?.category);
+    const project = stateName(entry?.project);
+    if (category) categories.push(category);
+    if (project) projects.push(project);
+  });
+  const categoryNames = [...new Set(categories)].length ? [...new Set(categories)] : ["Organisation"];
+  const projectNames = [...new Set(projects)].length ? [...new Set(projects)] : ["Intern"];
+  const categoryIds = new Map(categoryNames.map(name => [name, id()]));
+  const projectIds = new Map(projectNames.map(name => [name, id()]));
+  const statements = [
+    env.DB.prepare("DELETE FROM entries WHERE user_id=?").bind(user.id),
+    env.DB.prepare("DELETE FROM favorites WHERE user_id=?").bind(user.id),
+    env.DB.prepare("DELETE FROM calendar_events WHERE user_id=?").bind(user.id),
+    env.DB.prepare("DELETE FROM notes WHERE user_id=?").bind(user.id),
+    env.DB.prepare("DELETE FROM absences WHERE user_id=?").bind(user.id),
+    env.DB.prepare("DELETE FROM closed_days WHERE user_id=?").bind(user.id),
+    env.DB.prepare("DELETE FROM settings WHERE user_id=?").bind(user.id),
+    env.DB.prepare("DELETE FROM categories WHERE user_id=?").bind(user.id),
+    env.DB.prepare("DELETE FROM projects WHERE user_id=?").bind(user.id),
+    ...categoryNames.map(name => env.DB.prepare("INSERT INTO categories (id,user_id,name,color,created_at,updated_at) VALUES (?,?,?,?,?,?)").bind(categoryIds.get(name), user.id, name, "#1769e8", timestamp, timestamp)),
+    ...projectNames.map(name => {
+      const source = (Array.isArray(main.projects) ? main.projects : []).find(item => stateName(item) === name);
+      return env.DB.prepare("INSERT INTO projects (id,user_id,name,status,budget_minutes,created_at,updated_at) VALUES (?,?,?,?,?,?,?)").bind(projectIds.get(name), user.id, name, source?.status === "archived" ? "archived" : "active", Math.max(0, Number(source?.budget_hours || 0) * 60), timestamp, timestamp);
+    }),
+    ...entries.map(entry => {
+      const category = stateName(entry?.category) || "Organisation", project = stateName(entry?.project) || "Intern";
+      const entryDate = /^\d{4}-\d{2}-\d{2}$/.test(String(entry?.date || "")) ? String(entry.date) : timestamp.slice(0, 10);
+      return env.DB.prepare("INSERT INTO entries (id,user_id,entry_date,start_time,end_time,duration_minutes,break_minutes,category_id,project_id,description,jira_reference,notes,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(entry?.id || id(), user.id, entryDate, entry?.time || entry?.start || null, entry?.endTime || entry?.end || null, Math.max(0, Number(entry?.minutes || 0)), Math.max(0, Number(entry?.breakMinutes || 0)), categoryIds.get(category) || categoryIds.get("Organisation"), projectIds.get(project) || projectIds.get("Intern"), entry?.description || null, entry?.jira_reference || entry?.jiraReference || null, entry?.notes || null, timestamp, timestamp);
+    }),
+    ...(Array.isArray(main.favorites) ? main.favorites : []).map(item => env.DB.prepare("INSERT INTO favorites (id,user_id,label,category_id,project_id,duration_minutes,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)").bind(id(), user.id, stateName(item?.label || item) || "Favorit", categoryIds.get(stateName(item?.category)) || null, projectIds.get(stateName(item?.project)) || null, Math.max(0, Number(item?.duration_minutes || item?.minutes || 0)), timestamp, timestamp)),
+    ...(Array.isArray(calendar) ? calendar : []).map(item => env.DB.prepare("INSERT INTO calendar_events (id,user_id,event_type,title,event_date,all_day,start_time,end_time,place,reminder_minutes,note,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(item?.id || id(), user.id, item?.type || item?.event_type || "Termin", item?.title || "Kalendereintrag", item?.date || timestamp.slice(0, 10), item?.allDay || item?.all_day ? 1 : 0, item?.start || item?.start_time || null, item?.end || item?.end_time || null, item?.place || null, Math.max(0, Number(item?.reminder || item?.reminder_minutes || 0)), item?.note || null, timestamp, timestamp)),
+    ...(Array.isArray(notes) ? notes : []).map(item => env.DB.prepare("INSERT INTO notes (id,user_id,title,content,checklist_json,color,section,archived,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(item?.id || id(), user.id, item?.title || "Ohne Titel", item?.content || "", JSON.stringify(Array.isArray(item?.tasks) ? item.tasks : []), item?.color || "blau", item?.section || "Arbeit", item?.archived ? 1 : 0, item?.created || timestamp, timestamp)),
+    ...(Array.isArray(main.absences) ? main.absences : []).map(item => env.DB.prepare("INSERT INTO absences (id,user_id,absence_type,start_date,end_date,note,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)").bind(item?.id || id(), user.id, item?.type || "Abwesenheit", item?.start || timestamp.slice(0, 10), item?.end || item?.start || timestamp.slice(0, 10), item?.note || null, timestamp, timestamp)),
+    ...(Array.isArray(main.closedDays) ? main.closedDays : []).map(date => env.DB.prepare("INSERT INTO closed_days (user_id,closed_date,created_at) VALUES (?,?,?)").bind(user.id, date, timestamp)),
+    ...["daily", "weekly", "breakHours", "weekdayTargets"].filter(key => main[key] !== undefined).map(key => env.DB.prepare("INSERT INTO settings (user_id,key,value,updated_at) VALUES (?,?,?,?)").bind(user.id, key, typeof main[key] === "string" ? main[key] : JSON.stringify(main[key]), timestamp))
+  ];
+  return statements;
 }
 
 async function enterpriseContext(env, user) {
@@ -316,7 +386,12 @@ async function appApi(request, env, user) {
   if (path === "/api/state" && request.method === "GET") {
     const row = await env.DB.prepare("SELECT payload_json,version,updated_at,updated_by_device,updated_by_label FROM user_states WHERE user_id=?").bind(user.id).first();
     if (row) {
-      try { return json({ state: JSON.parse(row.payload_json), version: Number(row.version || 1), updated_at: row.updated_at, updated_by_device: row.updated_by_device || null, updated_by_label: row.updated_by_label || null, exists: true }); }
+      try {
+        const stored = JSON.parse(row.payload_json), fallback = await legacyState(env, user), storedMain = stateJson(stored, syncStatePrefix + "v2", null), fallbackMain = stateJson(fallback, syncStatePrefix + "v2", {});
+        const merged = { ...fallback, ...stored };
+        if (storedMain && fallbackMain && typeof storedMain === "object" && typeof fallbackMain === "object") merged[syncStatePrefix + "v2"] = JSON.stringify({ ...fallbackMain, ...storedMain });
+        return json({ state: merged, version: Number(row.version || 1), updated_at: row.updated_at, updated_by_device: row.updated_by_device || null, updated_by_label: row.updated_by_label || null, exists: true });
+      }
       catch { return json({ state: {}, version: Number(row.version || 1), updated_at: row.updated_at, updated_by_device: row.updated_by_device || null, updated_by_label: row.updated_by_label || null, exists: true }); }
     }
     return json({ state: await legacyState(env, user), version: 0, updated_at: null, exists: false });
@@ -335,6 +410,12 @@ async function appApi(request, env, user) {
     const nextVersion = currentVersion + 1, timestamp = now(), device = data.device && typeof data.device === "object" ? data.device : {};
     const deviceId = String(device.id || "").slice(0, 120) || null, deviceLabel = String(device.label || "").slice(0, 80) || null;
     await env.DB.prepare("INSERT INTO user_states (user_id,payload_json,version,updated_at,updated_by_device,updated_by_label) VALUES (?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET payload_json=excluded.payload_json,version=excluded.version,updated_at=excluded.updated_at,updated_by_device=excluded.updated_by_device,updated_by_label=excluded.updated_by_label").bind(user.id, serialized, nextVersion, timestamp, deviceId, deviceLabel).run();
+    try {
+      const detailStatements = structuredStateStatements(env, user, state, timestamp);
+      for (let offset = 0; offset < detailStatements.length; offset += 80) await env.DB.batch(detailStatements.slice(offset, offset + 80));
+    } catch (error) {
+      console.error("Strukturierte Profildaten konnten nicht aktualisiert werden.", error);
+    }
     return json({ ok: true, version: nextVersion, updated_at: timestamp });
   }
   if (path === "/api/bootstrap" && request.method === "GET") {
