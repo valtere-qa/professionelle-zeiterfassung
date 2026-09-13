@@ -298,6 +298,8 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.equal(a.$('#pdf').textContent.includes('PDF'), true);
   assert.ok(a.$('#entriesToday'));
   assert.ok(a.$('#overviewCalendarToday'));
+  assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-3/);
+  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-2/);
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
   assert.match(stable, /#overviewView>\.work\{|\.metrics\{gap:10px;margin:0 0 20px/);
 });

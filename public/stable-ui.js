@@ -37,7 +37,7 @@
     return candidate===value?"":namedLabel(candidate);
   };
   const entrySearchText = entry => [entry?.date,namedLabel(entry?.category),namedLabel(entry?.project),entry?.description,entry?.notes].map(value=>String(value??"")).join(" ").toLowerCase();
-  const escapeHtml = value => String(value ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const escapeHtml = value => (typeof value === "object" ? namedLabel(value) : String(value ?? "")).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const minutes = value => {
     const s=String(value??"").trim().replace(",",".");
     const clock=s.match(/^(\d+):(\d{1,2})$/), hours=s.match(/^(\d+)(?:\.(\d+))?\s*h(?:\s*(\d{1,2}))?$/i);
