@@ -15,7 +15,11 @@
   const entriesTableStyle=document.createElement("style");entriesTableStyle.textContent=`.stable-entry-table{margin-top:18px}.stable-entry-table .stable-table-header,.stable-entry-table .stable-entry-row{grid-template-columns:110px minmax(150px,1fr) minmax(180px,1.2fr) 70px minmax(250px,auto)}.stable-entry-row>span,.stable-entry-row>strong{min-width:0;overflow:hidden;text-overflow:ellipsis}.stable-entry-row>span:nth-child(2) b,.stable-entry-row>span:nth-child(2) small,.stable-entry-row>span:nth-child(3) b,.stable-entry-row>span:nth-child(3) small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.stable-entry-row>span:nth-child(2) small,.stable-entry-row>span:nth-child(3) small{margin-top:3px;color:#718096;font-size:11px}.stable-entry-row>strong{font-size:13px;text-align:right}.stable-entry-table .stable-table-actions{min-width:0}.stable-entry-table .stable-table-actions .btn{white-space:nowrap}.stable-entry-table .stable-table-actions .delete{font-size:22px}.stable-table-empty{padding:20px 16px;color:#718096;text-align:center}@media(max-width:900px){.stable-entry-table .stable-table-header,.stable-entry-table .stable-entry-row{grid-template-columns:minmax(0,1fr) auto}.stable-entry-table .stable-table-header span:nth-child(2),.stable-entry-table .stable-table-header span:nth-child(3),.stable-entry-table .stable-table-header span:nth-child(4),.stable-entry-table .stable-entry-row>span:nth-child(2),.stable-entry-table .stable-entry-row>span:nth-child(3),.stable-entry-table .stable-entry-row>strong{display:none}.stable-entry-table .stable-entry-row{gap:10px}.stable-entry-table .stable-entry-row>span:first-child{font-weight:600}.stable-entry-table .stable-table-actions{justify-content:flex-end;flex-wrap:wrap}}@media(max-width:600px){.stable-entry-table .stable-table-actions .btn{font-size:11px;padding:5px 7px}.stable-entry-table .stable-table-header span:last-child{font-size:10px}}`;document.head.append(entriesTableStyle);
   const entriesTableAlignmentStyle=document.createElement("style");entriesTableAlignmentStyle.textContent=`.stable-entry-table .stable-table-header,.stable-entry-table .stable-entry-row{grid-template-columns:44px 110px minmax(150px,1fr) minmax(180px,1.2fr) 70px minmax(128px,auto)}.stable-entry-table .stable-table-header{padding-left:16px}.stable-entry-table .stable-entry-row{padding-left:16px}.stable-entry-table .entry-icon-button{width:30px;height:30px;padding:3px}.stable-entry-table .stable-table-actions{gap:5px}@media(max-width:900px){.stable-entry-table .stable-table-header,.stable-entry-table .stable-entry-row{grid-template-columns:44px minmax(0,1fr) auto}.stable-entry-table .stable-table-header span:nth-child(2),.stable-entry-table .stable-table-header span:nth-child(3),.stable-entry-table .stable-table-header span:nth-child(4),.stable-entry-table .stable-entry-row>span:nth-child(2),.stable-entry-table .stable-entry-row>span:nth-child(3),.stable-entry-table .stable-entry-row>strong{display:none}}`;document.head.append(entriesTableAlignmentStyle);
   const entryTextAlignmentStyle=document.createElement("style");entryTextAlignmentStyle.textContent=`.stable-entry-row>span:nth-child(4) b,.stable-entry-row>span:nth-child(4) small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.stable-entry-row>span:nth-child(4) small{margin-top:3px;color:#718096;font-size:11px}.stable-entry-row>span:nth-child(4) b{font-weight:700}`;document.head.append(entryTextAlignmentStyle);
-  const state = () => Object.assign({}, defaults, JSON.parse(localStorage.getItem(STORE) || "{}"));
+  const state = () => {
+    const data=Object.assign({}, defaults, JSON.parse(localStorage.getItem(STORE) || "{}"));
+    data.entries=(Array.isArray(data.entries)?data.entries:[]).map(entry=>entry&&typeof entry==="object"?Object.assign({},entry,{category:namedLabel(entry.category),project:namedLabel(entry.project)}):entry);
+    return data;
+  };
   const read = (key, fallback) => JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
   const save = (key, value) => localStorage.setItem(key, JSON.stringify(value));
   const api=()=>window.ZeiterfassungAPI;
@@ -26,7 +30,13 @@
   const removeCalendar=async item=>{if(!api()?.hasSession?.()||!item?.id)return;try{await api().remove("calendar",item.id);}catch(error){console.warn("Kalender lokal gelöscht; D1-Löschung ausstehend.",error);}};
   const dateKey = date => { const value=date instanceof Date?date:new Date(date); return value.getFullYear()+"-"+String(value.getMonth()+1).padStart(2,"0")+"-"+String(value.getDate()).padStart(2,"0"); };
   const today = () => dateKey(new Date());
-  const namedLabel = value => typeof value === "string" ? value : String(value?.name||value?.label||"");
+  const namedLabel = value => {
+    if(typeof value === "string"||typeof value === "number")return String(value);
+    if(!value||typeof value !== "object")return "";
+    const candidate=value.name??value.label??value.title??value.displayName??value.display_name??value.value;
+    return candidate===value?"":namedLabel(candidate);
+  };
+  const entrySearchText = entry => [entry?.date,namedLabel(entry?.category),namedLabel(entry?.project),entry?.description,entry?.notes].map(value=>String(value??"")).join(" ").toLowerCase();
   const escapeHtml = value => String(value ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const minutes = value => {
     const s=String(value??"").trim().replace(",",".");
@@ -185,7 +195,7 @@
     let page=1;
     const draw=()=>{
       const selectedDate=localStorage.getItem(SELECTED_ENTRY_DATE)||"", q=($("#stableSearch",p)?.value||"").toLowerCase();
-      const list=d.entries.map((e,i)=>({...e,_i:i})).filter(e=>(!selectedDate||e.date===selectedDate)&&[e.date,e.category,e.project,e.description,e.notes].join(" ").toLowerCase().includes(q));
+      const list=d.entries.map((e,i)=>({...e,_i:i})).filter(e=>(!selectedDate||e.date===selectedDate)&&entrySearchText(e).includes(q));
       const pageSize=10,totalPages=Math.max(1,Math.ceil(list.length/pageSize));page=Math.min(page,totalPages);
       const selectedLabel=selectedDate?new Date(selectedDate+"T12:00:00").toLocaleDateString("de-DE",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"}):"Alle Buchungen", selectedAbsence=absenceForDate(selectedDate,d);
       const rows=list.slice((page-1)*pageSize,page*pageSize);
@@ -419,10 +429,16 @@
   const exportDateLabel=date=>new Date(date+"T12:00:00").toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"});
   const exportWeekday=date=>new Date(date+"T12:00:00").toLocaleDateString("de-DE",{weekday:"long"});
   const exportSigned=minutesValue=>(minutesValue>=0?"＋":"−")+format(Math.abs(minutesValue));
+  const exportPause=entry=>{
+    const raw=entry.pause??entry.break;
+    if(raw==null||String(raw).trim()==="")return "0h 00";
+    const value=String(raw).toLowerCase().includes("h")?minutes(raw):Math.round(pauseHours(raw)*60);
+    return format(value);
+  };
   const exportData=period=>{
     const data=state(),dates=exportDates(period.from,period.to),absenceDates=dates.filter(date=>Boolean(absenceForDate(date,data))),entries=data.entries.filter(entry=>entry.date>=period.from&&entry.date<=period.to&&!absenceForDate(entry.date,data)).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.time||"").localeCompare(String(b.time||""))),dailyTotals=new Map();
     entries.forEach(entry=>dailyTotals.set(entry.date,(dailyTotals.get(entry.date)||0)+Number(entry.minutes||0)));
-    const rows=[...entries.map(entry=>({date:entry.date,weekday:exportWeekday(entry.date),status:"Gebucht",absence:"",category:namedLabel(entry.category),project:namedLabel(entry.project),description:entry.description||"",start:entry.time||"",end:entry.endTime||"",pause:entry.pause||entry.break||"",duration:format(entry.minutes),target:format(configuredTargetForDate(entry.date,data)),balance:exportSigned((dailyTotals.get(entry.date)||0)-configuredTargetForDate(entry.date,data)),notes:entry.notes||""})),...absenceDates.map(date=>({date,weekday:exportWeekday(date),status:"Abwesenheit",absence:absenceLabel(absenceForDate(date,data)),category:"",project:"",description:"Keine Zeitbuchung erforderlich",start:"",end:"",pause:"0h 00",duration:"0h 00",target:format(configuredTargetForDate(date,data)),balance:"0h 00",notes:"Keine Zeitbuchung erforderlich"}))].sort((a,b)=>a.date.localeCompare(b.date)||a.status.localeCompare(b.status));
+    const rows=[...entries.map(entry=>({date:entry.date,weekday:exportWeekday(entry.date),status:"Gebucht",absence:"",category:namedLabel(entry.category),project:namedLabel(entry.project),description:entry.description||"",start:entry.time||"",end:entry.endTime||"",pause:exportPause(entry),duration:format(entry.minutes),target:format(configuredTargetForDate(entry.date,data)),balance:exportSigned((dailyTotals.get(entry.date)||0)-configuredTargetForDate(entry.date,data)),notes:entry.notes||""})),...absenceDates.map(date=>({date,weekday:exportWeekday(date),status:"Abwesenheit",absence:absenceLabel(absenceForDate(date,data)),category:"",project:"",description:"Keine Zeitbuchung erforderlich",start:"",end:"",pause:"0h 00",duration:"0h 00",target:format(configuredTargetForDate(date,data)),balance:"0h 00",notes:"Keine Zeitbuchung erforderlich"}))].sort((a,b)=>a.date.localeCompare(b.date)||a.status.localeCompare(b.status));
     const actual=entries.reduce((sum,entry)=>sum+Number(entry.minutes||0),0),target=dates.reduce((sum,date)=>sum+targetForDate(date,data),0),categories={},projects={};
     entries.forEach(entry=>{const category=namedLabel(entry.category)||"Ohne Kategorie",project=namedLabel(entry.project)||"Ohne Projekt";categories[category]=(categories[category]||0)+Number(entry.minutes||0);projects[project]=(projects[project]||0)+Number(entry.minutes||0)});
     return {data,period,dates,entries,rows,actual,target,saldo:actual-target,absenceDates,categories,projects,bookedDays:new Set(entries.map(entry=>entry.date)).size,workingDays:dates.filter(date=>!absenceForDate(date,data)).length};

@@ -389,6 +389,8 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /vollständig sichtbar/);
   assert.match(a.$('#dynamic').textContent, /Abwesenheit in den Ansichten/);
   assert.match(a.$('#dynamic').textContent, /Professionelle Exporte/);
+  assert.match(a.$('#dynamic').textContent, /Timer-Buchungen/);
+  assert.match(a.$('#dynamic').textContent, /Semikolon/);
   a.$('[data-help-lang="fr"]').click();
   await tick();
   assert.match(a.$('#dynamic').textContent, /Saisies/);
@@ -399,6 +401,8 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /entièrement visibles/);
   assert.match(a.$('#dynamic').textContent, /Absences dans les vues/);
   assert.match(a.$('#dynamic').textContent, /Exports professionnels/);
+  assert.match(a.$('#dynamic').textContent, /saisies du minuteur/);
+  assert.match(a.$('#dynamic').textContent, /point-virgule/);
   assert.match(a.$('#dynamic').textContent, /Organisation & gouvernance/);
 });
 
@@ -427,7 +431,7 @@ test('Export dialog previews the professional report for each period', async t =
 
 test('CSV export contains summary, details and zero-valued absence rows', async t => {
   const a = await app(t, '#overview', {
-    [STORE]: { entries: [{ date: TODAY, minutes: 90, category: 'Testing', project: 'Intern', description: 'Analyse' }] }
+    [STORE]: { entries: [{ date: TODAY, minutes: 90, category: 'Testing', project: 'Intern', description: 'Analyse', break: 0.5 }] }
   });
   let captured;
   a.window.Blob = class { constructor(parts) { this.parts = parts; } };
@@ -441,6 +445,9 @@ test('CSV export contains summary, details and zero-valued absence rows', async 
   assert.match(csv, /Professionelle Zeiterfassung/);
   assert.match(csv, /Zusammenfassung/);
   assert.match(csv, /"Datum";"Wochentag";"Status"/);
+  assert.match(csv, /"0h 30"/);
+  assert.match(csv, /\r\n/);
+  assert.doesNotMatch(csv, /(^|[^\r])\n/);
   assert.match(csv, /Analyse/);
 
   const absenceApp = await app(t, '#overview', {
@@ -503,6 +510,22 @@ test('PDF and CSV exports normalize object-backed category and project labels', 
   assert.doesNotMatch(csv, /\[object Object\]/);
   assert.match(csv, /Organisation/);
   assert.match(csv, /Intern/);
+});
+
+test('Timer bookings render visible labels in overview and daily entries', async t => {
+  const a = await app(t, '#overview', {
+    [STORE]: {
+      entries: [{ date: TODAY, minutes: 1, category: { name: 'Organisation' }, project: { label: 'Intern' }, description: 'Timer-Buchung' }]
+    }
+  });
+  assert.doesNotMatch(a.$('#entryList').textContent, /\[object Object\]/);
+  assert.match(a.$('#entryList').textContent, /Organisation/);
+  assert.match(a.$('#entryList').textContent, /Intern/);
+
+  a.click('entries');
+  assert.doesNotMatch(a.$('#stableRows').textContent, /\[object Object\]/);
+  assert.match(a.$('#stableRows').textContent, /Timer-Buchung/);
+  assert.match(a.$('#stableRows').textContent, /Intern/);
 });
 
 test('Enterprise Center covers organization, approvals, policy and integrations', async t => {
