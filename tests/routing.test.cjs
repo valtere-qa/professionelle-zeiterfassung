@@ -302,8 +302,12 @@ test('Overview presents the compact professional dashboard with a decoded user n
   const mobile = readFileSync(resolve(publicDir, 'mobile-responsive.css'), 'utf8');
   assert.match(mobile, /safe-area-inset-bottom/);
   assert.match(mobile, /grid-template-columns: repeat\\(2, minmax\\(0, 1fr\\)\\)/);
+  assert.match(mobile, /#dynamic \.stable-cal-layout/);
+  assert.match(mobile, /#dynamic \.enterprise-grid/);
+  assert.match(mobile, /#dynamic #calToday/);
+  assert.match(mobile, /#dynamic #stableSearch/);
   assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-5/);
-  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-4/);
+  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-6/);
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
   assert.match(stable, /#overviewView>\.work\{|\.metrics\{gap:10px;margin:0 0 20px/);
 });
