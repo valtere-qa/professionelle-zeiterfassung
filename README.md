@@ -38,7 +38,8 @@ Responsive Zeiterfassung für **Valtère Fansi** mit Cloudflare Worker, D1-Daten
 
 - CSV-Export für Tag, freien Zeitraum, Monat und Jahr
 - PDF-Druckbericht für Tag, freien Zeitraum, Monat und Jahr
-- CSV/PDF mit Datum, Kategorie, Projekt, Leistung, Dauer und Bemerkung
+- CSV mit Berichtskopf, Zusammenfassung, Abwesenheitszeilen mit 0h 00 und detaillierten Buchungsfeldern
+- PDF als druckoptimierter A4-Arbeitszeitreport mit Kennzahlen, Kategorien, Projekten und Detailbuchungen
 - Kategorien, Projekte und Favoriten verwalten
 - JSON-Datensicherung und Wiederherstellung
 - Authentifizierungs-Untermenü im Profil: Einloggen, Registrierung und Abmelden
@@ -55,7 +56,7 @@ Der Reiter **Organisation** bündelt die vier Ausbauphasen in einer präsentatio
 - **Phase 3 – HR, Payroll und Kosten:** Projektbudgets, Ist-Zeit, Auslastung, Kostenstellen-Sicht, CSV-/Payroll-Export, protokollierte Exportvorgänge und Management-Kennzahlen.
 - **Phase 4 – Betrieb und Integration:** Mobiler Kiosk-/Terminalfluss mit Arbeitsbeginn und Arbeitsende, Schichtplanung mit Arbeitsort und Pause, Kalender-/Projekt-/HR-/Payroll-Anschlussstellen, Status und letzter Synchronisationszeitpunkt, revisionsfähige Änderungsereignisse sowie mobile Darstellung.
 
-Die produktiven Connectoren sind bewusst als sichere Integrationspunkte angelegt: Für einen echten Finstar-Betrieb müssen der gewünschte SSO-/MFA-Anbieter, HR-/Payroll-Endpunkt, Kalenderzugriff und Aufbewahrungsfristen noch mit Firmenparametern und Secrets konfiguriert werden. Der Kiosk ist im persönlichen Portfolio-Modus lokal durchspielbar; die produktive Geräte-, PIN- und Identitätsverwaltung wird über diese Anschlussstellen angebunden. Die Oberfläche kennzeichnet Integrationen als vorbereitet, statt eine nicht vorhandene Produktivverbindung vorzutäuschen. Die Hilfe wurde um den Enterprise-Bereich auf Deutsch und Französisch erweitert und dokumentiert jetzt auch Synchronisierung, lokalen Fallback und das Zurücksetzen der Demo-Daten.
+Die produktiven Connectoren sind bewusst als sichere Integrationspunkte angelegt: Für einen echten Finstar-Betrieb müssen der gewünschte SSO-/MFA-Anbieter, HR-/Payroll-Endpunkt, Kalenderzugriff und Aufbewahrungsfristen noch mit Firmenparametern und Secrets konfiguriert werden. Der Kiosk ist im persönlichen Portfolio-Modus lokal durchspielbar; die produktive Geräte-, PIN- und Identitätsverwaltung wird über diese Anschlussstellen angebunden. Die Oberfläche kennzeichnet Integrationen als vorbereitet, statt eine nicht vorhandene Produktivverbindung vorzutäuschen. Die Hilfe wurde um den Enterprise-Bereich sowie die professionellen PDF-/CSV-Exporte auf Deutsch und Französisch erweitert und dokumentiert jetzt auch Synchronisierung, lokalen Fallback und das Zurücksetzen der Demo-Daten.
 
 ## Bedienung
 
@@ -179,11 +180,15 @@ npm test
 
 `tests/routing.test.cjs` führt die echte HTML-Datei mit allen eingebundenen App-Skripten in jsdom aus. Getestet werden alle elf Reiter, Direktlinks, URL-Normalisierung, Browser-Verlauf, wiederholte Klicks, Notizentwürfe beim erneuten Öffnen desselben Reiters, „Zeit erfassen“, Daten-Aktualisierung, Tag-/Woche-Umschaltung, die Sichtbarkeit der Ansichten sowie die Enterprise-Flows für Organisation, Freigaben, Compliance und Integrationen. Netzwerkanfragen sind simuliert; keine produktiven Daten werden verändert.
 
-Aktueller automatisierter Stand: **75 Tests bestanden, 0 fehlgeschlagen**. Die mobile Navigation wird zusätzlich anhand ihrer CSS-Regeln und mit simulierten Abmessungen geprüft; das zentrale SVG-Icon-System, Bearbeiten, Löschen, Pflichtfeldvalidierung mit Fokussteuerung, die neuen Enterprise-Flows sowie robuste Organisationsdaten und verzögerte Synchronisierung werden geprüft.
+Aktueller automatisierter Stand: **82 Tests bestanden, 0 fehlgeschlagen**. Die mobile Navigation wird zusätzlich anhand ihrer CSS-Regeln und mit simulierten Abmessungen geprüft; das zentrale SVG-Icon-System, Bearbeiten, Löschen, Pflichtfeldvalidierung mit Fokussteuerung, die Enterprise-Flows, professionelle Exporte inklusive PDF-/CSV-Inhalt, Abwesenheits-Nullwerte sowie robuste Organisationsdaten und verzögerte Synchronisierung werden geprüft.
 
 Die Auswertung entspricht jetzt dem professionellen Dashboard-Aufbau: Zeitraumkopf, PDF-Aktion, sieben Kennzahlen, Wochenvergleich „Gebuchte Zeit vs. Tagessoll“ und Zeitverteilung nach Kategorie. Alle Werte werden aus den lokalen Buchungen berechnet und reagieren direkt auf Änderungen.
 
-Abwesenheiten werden in „Einträge“, „Woche“ und „Auswertung“ eindeutig angezeigt. Ferien, Krankheit und weitere Abwesenheiten zeigen den Grund, das Datum und `0h 00`; an diesen Tagen ist keine Zeitbuchung erforderlich. Die betroffenen Tage werden in der Wochenansicht ausgegraut. Abwesenheitstage werden bei der Wochen- und Monats-Sollzeit sowie bei der Auswertung automatisch berücksichtigt. Der Kalender-Picker in der Übersicht enthält zusätzlich die Schaltfläche „Heute“.
+Abwesenheiten werden in „Einträge“, „Woche“ und „Auswertung“ eindeutig angezeigt. Ferien, Krankheit und weitere Abwesenheiten zeigen den Grund, das Datum und `0h 00`; an diesen Tagen ist keine Zeitbuchung erforderlich. Die betroffenen Tage werden in der Wochenansicht ausgegraut. Abwesenheitstage werden bei der Wochen- und Monats-Sollzeit sowie bei der Auswertung automatisch berücksichtigt. Die Pause wird an einem Abwesenheitstag ebenfalls als `0` angezeigt und ist dort nicht bearbeitbar. Der Kalender-Picker in der Übersicht enthält zusätzlich die Schaltfläche „Heute“.
+
+PDF- und CSV-Exporte verwenden dieselbe professionelle Berichtsbasis: Tag, Zeitraum, Monat oder Jahr lassen sich als Zeitraum wählen. Der PDF-Bericht enthält eine A4-Kopfzeile, Kennzahlen für Ist/Soll/Saldo, Abwesenheitshinweise, Verteilungen nach Kategorie und Projekt sowie Detailbuchungen. Die CSV-Datei enthält zusätzlich einen strukturierten Berichtskopf, die Zusammenfassung und je Abwesenheitstag eine explizite Zeile mit `0h 00`.
+
+Die Kalenderkarte in der Übersicht bietet zusätzlich eine sichtbare „Heute“-Schaltfläche. Sie springt bei Bedarf zum aktuellen Monat und heutigen Datum zurück, ohne die gespeicherten Markierungen für vorhandene Tagesbuchungen zu verlieren.
 
 Der Reiter „Woche“ zeigt die aktuelle Arbeitswoche mit Arbeitsrahmen, Tages-/Wochensoll, Ist-Zeit, Fortschrittsbalken, Wochensaldo und sieben anklickbaren Tageskarten. Die Karten verwenden eine dezente 3D-Tiefe und bleiben auf Mobilgeräten zweispaltig und touch-freundlich.
 

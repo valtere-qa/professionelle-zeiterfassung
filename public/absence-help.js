@@ -2,15 +2,26 @@
   const addAbsenceHelp = () => {
     const panel = document.querySelector("#dynamic");
     const grid = panel?.querySelector(".stable-help-grid");
-    if (!grid || grid.querySelector("[data-absence-help]")) return;
+    if (!grid) return;
     const french = panel.querySelector(".stable-help-langs button.active")?.dataset.helpLang === "fr";
-    const card = document.createElement("article");
-    card.className = "card stable-help-card";
-    card.dataset.absenceHelp = "true";
-    card.innerHTML = french
-      ? "<span class='stable-help-number'>12</span><h3>Absences dans les vues</h3><p>Les congés, maladies et autres absences sont visibles dans les saisies, la semaine et les statistiques avec leur motif et 0h 00.</p><div class='stable-help-steps'>Les jours d’absence sont grisés; aucune saisie n’est nécessaire. L’objectif hebdomadaire et mensuel est automatiquement réduit. Le sélecteur de date de l’accueil propose aussi « Aujourd’hui ».</div>"
-      : "<span class='stable-help-number'>12</span><h3>Abwesenheit in den Ansichten</h3><p>Ferien, Krankheit und weitere Abwesenheiten werden in „Einträge“, „Woche“ und „Auswertung“ mit Grund und 0h 00 angezeigt.</p><div class='stable-help-steps'>Abwesenheitstage sind ausgegraut; eine Zeitbuchung ist nicht erforderlich. Wochen- und Monatssoll werden automatisch reduziert. Der Kalender-Picker in der Übersicht enthält zusätzlich „Heute“.</div>";
-    grid.append(card);
+    if (!grid.querySelector("[data-absence-help]")) {
+      const card = document.createElement("article");
+      card.className = "card stable-help-card";
+      card.dataset.absenceHelp = "true";
+      card.innerHTML = french
+        ? "<span class='stable-help-number'>12</span><h3>Absences dans les vues</h3><p>Les congés, maladies et autres absences sont visibles dans les saisies, la semaine et les statistiques avec leur motif et 0h 00.</p><div class='stable-help-steps'>Les jours d’absence sont grisés; aucune saisie n’est nécessaire. L’objectif hebdomadaire et mensuel est automatiquement réduit. La pause est également affichée à 0h 00. Le calendrier de l’accueil possède aussi un bouton « Aujourd’hui ».</div>"
+        : "<span class='stable-help-number'>12</span><h3>Abwesenheit in den Ansichten</h3><p>Ferien, Krankheit und weitere Abwesenheiten werden in „Einträge“, „Woche“ und „Auswertung“ mit Grund und 0h 00 angezeigt.</p><div class='stable-help-steps'>Abwesenheitstage sind ausgegraut; eine Zeitbuchung ist nicht erforderlich. Wochen- und Monatssoll werden automatisch reduziert. Auch die Pause wird an diesen Tagen mit 0h 00 angezeigt. Der Kalender in der Übersicht besitzt zusätzlich die Schaltfläche „Heute“.</div>";
+      grid.append(card);
+    }
+    if (!grid.querySelector("[data-export-help]")) {
+      const card = document.createElement("article");
+      card.className = "card stable-help-card";
+      card.dataset.exportHelp = "true";
+      card.innerHTML = french
+        ? "<span class='stable-help-number'>13</span><h3>Exports professionnels</h3><p>Exportez un rapport clair pour un jour, une période, un mois ou une année.</p><div class='stable-help-steps'>Le CSV contient l’en-tête, le résumé, les absences à 0h 00 et les détails. Le PDF est optimisé pour A4 avec indicateurs, répartition par catégorie et projet et saisies détaillées.</div>"
+        : "<span class='stable-help-number'>13</span><h3>Professionelle Exporte</h3><p>Erstelle für Tag, Zeitraum, Monat oder Jahr einen klaren Arbeitszeitreport.</p><div class='stable-help-steps'>CSV enthält Berichtskopf, Zusammenfassung, Abwesenheiten mit 0h 00 und Detailfelder. PDF ist für A4 optimiert und enthält Kennzahlen, Verteilung nach Kategorie und Projekt sowie Detailbuchungen.</div>";
+      grid.append(card);
+    }
   };
   const dynamic = document.querySelector("#dynamic");
   if (dynamic) new MutationObserver(addAbsenceHelp).observe(dynamic, { childList: true, subtree: true });

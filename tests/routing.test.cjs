@@ -297,6 +297,7 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.equal(a.$('#csv').textContent.includes('CSV'), true);
   assert.equal(a.$('#pdf').textContent.includes('PDF'), true);
   assert.ok(a.$('#entriesToday'));
+  assert.ok(a.$('#overviewCalendarToday'));
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
   assert.match(stable, /#overviewView>\.work\{|\.metrics\{gap:10px;margin:0 0 20px/);
 });
@@ -379,7 +380,7 @@ test('Empty checklist task shows a red validation message and focuses the field'
 test('Help provides German and French documentation for the app functions', async t => {
   const a = await app(t, '#help');
   await tick();
-  assert.equal(a.window.document.querySelectorAll('.stable-help-card').length, 12);
+  assert.equal(a.window.document.querySelectorAll('.stable-help-card').length, 13);
   assert.match(a.$('#dynamic').textContent, /Timer/);
   assert.match(a.$('#dynamic').textContent, /Tagesabschluss/);
   assert.match(a.$('#dynamic').textContent, /Tagessaldo/);
@@ -387,6 +388,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /ausgewählte Datum/);
   assert.match(a.$('#dynamic').textContent, /vollständig sichtbar/);
   assert.match(a.$('#dynamic').textContent, /Abwesenheit in den Ansichten/);
+  assert.match(a.$('#dynamic').textContent, /Professionelle Exporte/);
   a.$('[data-help-lang="fr"]').click();
   await tick();
   assert.match(a.$('#dynamic').textContent, /Saisies/);
@@ -396,7 +398,81 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /solde mensuel.*objectif mensuel/);
   assert.match(a.$('#dynamic').textContent, /entièrement visibles/);
   assert.match(a.$('#dynamic').textContent, /Absences dans les vues/);
+  assert.match(a.$('#dynamic').textContent, /Exports professionnels/);
   assert.match(a.$('#dynamic').textContent, /Organisation & gouvernance/);
+});
+
+test('Export dialog previews the professional report for each period', async t => {
+  const previous = new Date(TODAY + 'T12:00:00');
+  previous.setDate(previous.getDate() - 2);
+  const previousDate = previous.toISOString().slice(0, 10);
+  const a = await app(t, '#overview', {
+    [STORE]: {
+      entries: [{ date: previousDate, minutes: 90, category: 'Organisation', project: 'Intern', description: 'Analyse' }],
+      absences: [{ id: 'absence-export', type: 'Ferien', start: TODAY, end: TODAY }]
+    }
+  });
+  a.$('#csv').click();
+  assert.ok(a.$('#exportPreview'));
+  assert.match(a.$('#exportPreview').textContent, /Professionelle Zeiterfassung/);
+  assert.match(a.$('#exportPreview').textContent, /Erfasste Zeit/);
+  a.$('[data-export-mode="range"]').click();
+  a.$('#exportFrom').value = previousDate;
+  a.$('#exportFrom').dispatchEvent(new a.window.Event('input', { bubbles: true }));
+  a.$('#exportTo').value = TODAY;
+  a.$('#exportTo').dispatchEvent(new a.window.Event('input', { bubbles: true }));
+  assert.match(a.$('#exportPreview').textContent, /Abwesenheit/);
+  assert.match(a.$('.stable-modal').textContent, /CSV-Datei exportieren/);
+});
+
+test('CSV export contains summary, details and zero-valued absence rows', async t => {
+  const a = await app(t, '#overview', {
+    [STORE]: { entries: [{ date: TODAY, minutes: 90, category: 'Testing', project: 'Intern', description: 'Analyse' }] }
+  });
+  let captured;
+  a.window.Blob = class { constructor(parts) { this.parts = parts; } };
+  a.window.HTMLAnchorElement.prototype.click = function() {};
+  a.window.URL.createObjectURL = blob => { captured = blob; return 'blob:test'; };
+  a.window.URL.revokeObjectURL = () => {};
+  a.$('#csv').click();
+  a.$('.stable-save').click();
+  assert.ok(captured);
+  const csv = String(captured.parts[0]);
+  assert.match(csv, /Professionelle Zeiterfassung/);
+  assert.match(csv, /Zusammenfassung/);
+  assert.match(csv, /"Datum";"Wochentag";"Status"/);
+  assert.match(csv, /Analyse/);
+
+  const absenceApp = await app(t, '#overview', {
+    [STORE]: { entries: [], absences: [{ id: 'absence-csv', type: 'Krankheit', start: TODAY, end: TODAY }] }
+  });
+  absenceApp.window.Blob = class { constructor(parts) { this.parts = parts; } };
+  absenceApp.window.HTMLAnchorElement.prototype.click = function() {};
+  absenceApp.window.URL.createObjectURL = blob => { captured = blob; return 'blob:test'; };
+  absenceApp.window.URL.revokeObjectURL = () => {};
+  absenceApp.$('#csv').click();
+  absenceApp.$('.stable-save').click();
+  const absenceCsv = String(captured.parts[0]);
+  assert.match(absenceCsv, /Krankheit/);
+  assert.match(absenceCsv, /0h 00/);
+});
+
+test('PDF export creates an A4 professional work report', async t => {
+  const a = await app(t, '#overview', {
+    [STORE]: { entries: [{ date: TODAY, minutes: 90, category: 'Testing', project: 'Intern', description: 'Analyse' }] }
+  });
+  let opened;
+  a.window.open = () => {
+    opened = { html: '', document: { write(value) { opened.html = value; }, close() {} } };
+    return opened;
+  };
+  a.$('#pdf').click();
+  a.$('.stable-save').click();
+  assert.ok(opened);
+  assert.match(opened.html, /Arbeitszeitreport/);
+  assert.match(opened.html, /@page\{size:A4/);
+  assert.match(opened.html, /Detailbuchungen/);
+  assert.match(opened.html, /Analyse/);
 });
 
 test('Enterprise Center covers organization, approvals, policy and integrations', async t => {
@@ -669,6 +745,19 @@ test('Overview calendar keeps booking marks when switching months', async t => {
   assert.ok([...a.window.document.querySelectorAll('#days button:not(.muted)')].find(button => button.textContent.trim() === '1' && button.classList.contains('has-booking')));
 });
 
+test('Overview calendar Today button returns to the current month and date', async t => {
+  const a = await app(t, '#overview');
+  const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+  a.$('#next').click();
+  await tick();
+  assert.notEqual(a.$('#month').textContent, monthNames[new Date(TODAY + 'T12:00:00').getMonth()] + ' ' + TODAY.slice(0, 4));
+  a.$('#overviewCalendarToday').click();
+  await tick();
+  assert.equal(a.$('#month').textContent, monthNames[new Date(TODAY + 'T12:00:00').getMonth()] + ' ' + TODAY.slice(0, 4));
+  assert.equal(a.$('#workDate').value, TODAY);
+  assertView(a, 'overview');
+});
+
 test('Notification test uses the browser notification API and app fallback', async t => {
   const a = await app(t, '#calendar');
   const sent = [];
@@ -886,6 +975,10 @@ test('Absence dates are greyed out and block time capture', async t => {
   });
   assert.equal(a.$('#todayTotal').textContent, '0h 00');
   assert.equal(a.$('#todayTotal').closest('.metric').querySelector('label').textContent, 'Ferien');
+  assert.equal(a.$('#breakTotal').textContent, '0 Std.');
+  assert.equal(a.$('#breakInput').value, '0');
+  assert.equal(a.$('#breakInput').disabled, true);
+  assert.equal(a.$('#editBreakMetric').disabled, true);
   assert.match(a.$('#absenceMetricNote').textContent, /Ferien.*0h 00/);
   const monthStart = new Date(Number(TODAY.slice(0, 4)), Number(TODAY.slice(5, 7)) - 1, 1);
   const monthDays = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0).getDate();
