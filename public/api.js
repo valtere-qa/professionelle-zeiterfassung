@@ -6,7 +6,19 @@ async function apiRequest(path, options = {}) {
   const headers = { "content-type": "application/json", ...(options.headers || {}) };
   const token = sessionToken();
   if (token) headers.authorization = `Bearer ${token}`;
-  const response = await fetch(`${API_BASE}${path}`, { ...options, headers, cache: "no-store" });
+  const request = () => fetch(`${API_BASE}${path}`, { ...options, headers, cache: "no-store" });
+  const retryable = !options.method || options.method.toUpperCase() === "GET";
+  let response;
+  try { response = await request(); }
+  catch (error) {
+    if (!retryable) throw error;
+    await new Promise(resolve => setTimeout(resolve, 600));
+    response = await request();
+  }
+  if (retryable && response.status >= 500) {
+    await new Promise(resolve => setTimeout(resolve, 600));
+    response = await request();
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) { const error = new Error(data.error || "Die Anfrage konnte nicht ausgeführt werden."); error.status = response.status; error.data = data; throw error; }
   return data;

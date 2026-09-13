@@ -300,7 +300,7 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.ok(a.$('#overviewCalendarToday'));
   assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-3/);
   assert.match(a.$('script[src*="auth-ui.js"]').getAttribute('src'), /20260913-16/);
-  assert.match(a.$('script[src*="api.js"]').getAttribute('src'), /20260913-1/);
+  assert.match(a.$('script[src*="api.js"]').getAttribute('src'), /20260913-2/);
   assert.match(a.$('script[src*="cloud-sync.js"]').getAttribute('src'), /20260913-3/);
   assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-18/);
   assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-7/);
@@ -997,6 +997,23 @@ test('Cloud API requests bypass browser caches for current cross-device state', 
   const a = await app(t, '#overview', { [SESSION]: 'test-token' }, fetch);
   await a.window.ZeiterfassungCloudSync.pull();
   assert.equal(requestOptions.cache, 'no-store');
+});
+
+test('Cloud GET requests retry once after a transient connection failure', async t => {
+  let stateAttempts = 0;
+  const fetch = async (url, options = {}) => {
+    if (String(url).endsWith('/api/auth/me')) return { ok: true, json: async () => ({ user: { id: 'u1', name: 'Valtère', email: 'v@example.ch' } }) };
+    if (String(url).endsWith('/api/state')) {
+      stateAttempts += 1;
+      if (stateAttempts === 1) throw new Error('temporary network failure');
+      return { ok: true, status: 200, json: async () => ({ exists: true, state: {}, version: 1 }) };
+    }
+    if (String(url).endsWith('/api/bootstrap')) return { ok: true, json: async () => ({ calendar_events: [], notes: [] }) };
+    return { ok: false, json: async () => ({ error: 'Unexpected test request' }) };
+  };
+  await app(t, '#overview', { [SESSION]: 'test-token' }, fetch);
+  await new Promise(resolve => setTimeout(resolve, 750));
+  assert.equal(stateAttempts, 2);
 });
 
 test('Registration protection and admin invitation endpoints are defined server-side', async t => {
