@@ -298,6 +298,10 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.equal(a.$('#pdf').textContent.includes('PDF'), true);
   assert.ok(a.$('#entriesToday'));
   assert.ok(a.$('#overviewCalendarToday'));
+  assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-1/);
+  const mobile = readFileSync(resolve(publicDir, 'mobile-responsive.css'), 'utf8');
+  assert.match(mobile, /safe-area-inset-bottom/);
+  assert.match(mobile, /grid-template-columns: repeat\\(2, minmax\\(0, 1fr\\)\\)/);
   assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-5/);
   assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-4/);
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
@@ -390,6 +394,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /ausgewählte Datum/);
   assert.match(a.$('#dynamic').textContent, /vollständig sichtbar/);
   assert.match(a.$('#dynamic').textContent, /Abwesenheit in den Ansichten/);
+  assert.match(a.$('#dynamic').textContent, /Smartphone/);
   assert.match(a.$('#dynamic').textContent, /Professionelle Exporte/);
   assert.match(a.$('#dynamic').textContent, /Timer-Buchungen/);
   assert.match(a.$('#dynamic').textContent, /Semikolon/);
