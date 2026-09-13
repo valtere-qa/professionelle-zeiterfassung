@@ -280,3 +280,25 @@
   #dynamic .enterprise-tabs { touch-action: pan-x; overscroll-behavior-x: contain; }
   #dynamic .enterprise-card { max-width: 100%; overflow: visible; }
 }
+
+/* Keep the browser's native page scrollbar as the only vertical scroll context. */
+@media (max-width: 780px) {
+  html {
+    overflow-x: hidden !important;
+    overflow-y: scroll !important;
+    scrollbar-gutter: stable;
+  }
+  body {
+    min-height: 100dvh;
+    height: auto !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+    scroll-padding-bottom: 160px;
+  }
+  main {
+    padding-bottom: calc(160px + env(safe-area-inset-bottom));
+  }
+  #dynamic {
+    padding-bottom: 40px;
+  }
+}
