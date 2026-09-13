@@ -8,6 +8,7 @@ function cors(request, response) {
   const origin = request.headers.get("Origin");
   const allowed = origin && (origin.endsWith(".pages.dev") || origin.includes("chatgpt.site") || origin.includes("localhost")) ? origin : "*";
   const headers = new Headers(response.headers);
+  if (new URL(request.url).pathname.startsWith("/api/")) headers.set("cache-control", "no-store, no-cache, must-revalidate");
   headers.set("access-control-allow-origin", allowed);
   headers.set("access-control-allow-headers", "content-type, authorization");
   headers.set("access-control-allow-methods", "GET,POST,PATCH,DELETE,OPTIONS");

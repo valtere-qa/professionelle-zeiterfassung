@@ -301,7 +301,7 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-3/);
   assert.match(a.$('script[src*="auth-ui.js"]').getAttribute('src'), /20260913-16/);
   assert.match(a.$('script[src*="api.js"]').getAttribute('src'), /20260913-1/);
-  assert.match(a.$('script[src*="cloud-sync.js"]').getAttribute('src'), /20260913-2/);
+  assert.match(a.$('script[src*="cloud-sync.js"]').getAttribute('src'), /20260913-3/);
   assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-17/);
   assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-7/);
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
@@ -983,6 +983,20 @@ test('Authenticated profile data is hydrated from D1 and local changes are uploa
   assert.ok(upload);
   assert.ok(upload.body.device.id);
   assert.ok(upload.body.device.label);
+});
+
+test('Cloud API requests bypass browser caches for current cross-device state', async t => {
+  let requestOptions;
+  const fetch = async (url, options = {}) => {
+    requestOptions = options;
+    if (String(url).endsWith('/api/auth/me')) return { ok: true, json: async () => ({ user: { id: 'u1', name: 'Valtère', email: 'v@example.ch' } }) };
+    if (String(url).endsWith('/api/state')) return { ok: true, json: async () => ({ exists: true, state: {}, version: 1 }) };
+    if (String(url).endsWith('/api/bootstrap')) return { ok: true, json: async () => ({ calendar_events: [], notes: [] }) };
+    return { ok: false, json: async () => ({ error: 'Unexpected test request' }) };
+  };
+  const a = await app(t, '#overview', { [SESSION]: 'test-token' }, fetch);
+  await a.window.ZeiterfassungCloudSync.pull();
+  assert.equal(requestOptions.cache, 'no-store');
 });
 
 test('Registration protection and admin invitation endpoints are defined server-side', async t => {
