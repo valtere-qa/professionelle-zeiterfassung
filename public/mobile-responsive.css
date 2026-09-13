@@ -302,3 +302,41 @@
     padding-bottom: 40px !important;
   }
 }
+
+/* Keep the profile entry point visible above the mobile navigation. */
+@media (max-width: 780px) {
+  .sidebar {
+    min-height: 132px;
+    padding: 8px 8px max(8px, env(safe-area-inset-bottom));
+  }
+  .sidebar .profile {
+    display: flex;
+    order: 0;
+    width: 100%;
+    min-height: 42px;
+    margin: 0 0 6px;
+    padding: 6px 8px;
+    border-radius: 10px;
+  }
+  .sidebar .profile .avatar {
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+  .sidebar .profile b { font-size: 11px; }
+  .sidebar .profile small { font-size: 9px; }
+  .sidebar .nav { order: 1; flex: 1 1 auto; min-height: 0; }
+  body { scroll-padding-bottom: calc(214px + env(safe-area-inset-bottom)); }
+  main { padding-bottom: calc(214px + env(safe-area-inset-bottom)) !important; }
+  .auth-menu.auth-menu {
+    bottom: calc(132px + env(safe-area-inset-bottom)) !important;
+    max-height: calc(100dvh - 154px);
+  }
+  .auth-overlay {
+    align-items: start;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .auth-overlay .auth-card { margin: auto 0; }
+}

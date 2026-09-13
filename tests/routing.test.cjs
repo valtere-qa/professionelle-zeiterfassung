@@ -299,6 +299,7 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.ok(a.$('#entriesToday'));
   assert.ok(a.$('#overviewCalendarToday'));
   assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-3/);
+  assert.match(a.$('script[src*="auth-ui.js"]').getAttribute('src'), /20260908-14/);
   assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-12/);
   assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-7/);
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
@@ -322,6 +323,8 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.match(mobile, /scrollbar-gutter: stable/);
   assert.match(mobile, /padding-bottom: calc\(160px \+ env\(safe-area-inset-bottom\)\) !important/);
   assert.match(mobile, /\.sidebar \.nav/);
+  assert.match(mobile, /\.sidebar \.profile \{\s*display: flex/);
+  assert.match(mobile, /\.auth-menu\.auth-menu/);
 });
 
 test('Calendar day click opens entries for the selected day', async t => {
@@ -402,7 +405,7 @@ test('Empty checklist task shows a red validation message and focuses the field'
 test('Help provides German and French documentation for the app functions', async t => {
   const a = await app(t, '#help');
   await tick();
-  assert.equal(a.window.document.querySelectorAll('.stable-help-card').length, 13);
+  assert.equal(a.window.document.querySelectorAll('.stable-help-card').length, 14);
   assert.match(a.$('#dynamic').textContent, /Timer/);
   assert.match(a.$('#dynamic').textContent, /Tagesabschluss/);
   assert.match(a.$('#dynamic').textContent, /Tagessaldo/);
@@ -419,6 +422,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /Professionelle Exporte/);
   assert.match(a.$('#dynamic').textContent, /Timer-Buchungen/);
   assert.match(a.$('#dynamic').textContent, /Semikolon/);
+  assert.match(a.$('#dynamic').textContent, /Mobiler Login-Bereich/);
   a.$('[data-help-lang="fr"]').click();
   await tick();
   assert.match(a.$('#dynamic').textContent, /Saisies/);

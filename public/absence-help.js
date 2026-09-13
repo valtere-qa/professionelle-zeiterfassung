@@ -22,6 +22,15 @@
         : "<span class='stable-help-number'>13</span><h3>Professionelle Exporte</h3><p>Erstelle für Tag, Zeitraum, Monat oder Jahr einen klaren Arbeitszeitreport.</p><div class='stable-help-steps'>CSV enthält Berichtskopf, Zusammenfassung, Abwesenheiten mit 0h 00 und Detailfelder. Timer-Buchungen verwenden die sichtbaren Namen von Kategorie und Projekt; die Spalten bleiben fest und korrekt als UTF-8 mit Semikolon formatiert. Nach einer Aktualisierung wird automatisch der aktuelle Stand geladen. PDF ist für A4 optimiert, zeigt Kategorien und Projekte mit ihren Namen und enthält Kennzahlen, Verteilungen sowie Detailbuchungen.</div>";
       grid.append(card);
     }
+    if (!grid.querySelector("[data-auth-help]")) {
+      const card = document.createElement("article");
+      card.className = "card stable-help-card";
+      card.dataset.authHelp = "true";
+      card.innerHTML = french
+        ? "<span class='stable-help-number'>14</span><h3>Connexion mobile</h3><p>Le profil reste visible au-dessus de la navigation mobile.</p><div class='stable-help-steps'>Touchez le profil pour ouvrir la connexion, l’inscription, la sauvegarde et, après connexion, la déconnexion. Le menu reste entièrement accessible sur un écran de 360 px.</div>"
+        : "<span class='stable-help-number'>14</span><h3>Mobiler Login-Bereich</h3><p>Das Profil bleibt oberhalb der mobilen Navigation sichtbar.</p><div class='stable-help-steps'>Tippe auf das Profil, um Einloggen, Registrierung, Datensicherung und – nach der Anmeldung – Ausloggen zu öffnen. Das Menü bleibt auch auf einem 360‑px‑Display vollständig erreichbar.</div>";
+      grid.append(card);
+    }
   };
   const dynamic = document.querySelector("#dynamic");
   if (dynamic) new MutationObserver(addAbsenceHelp).observe(dynamic, { childList: true, subtree: true });
