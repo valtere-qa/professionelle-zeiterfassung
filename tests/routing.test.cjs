@@ -302,7 +302,7 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.match(a.$('script[src*="auth-ui.js"]').getAttribute('src'), /20260913-16/);
   assert.match(a.$('script[src*="api.js"]').getAttribute('src'), /20260913-1/);
   assert.match(a.$('script[src*="cloud-sync.js"]').getAttribute('src'), /20260913-2/);
-  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-15/);
+  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-16/);
   assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-7/);
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
   assert.match(stable, /#overviewView>\.work\{|\.metrics\{gap:10px;margin:0 0 20px/);
@@ -427,6 +427,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /Mobiler Login-Bereich/);
   assert.match(a.$('#dynamic').textContent, /Synchronisation und Benachrichtigungen/);
   assert.match(a.$('#dynamic').textContent, /dieselbe App-URL/);
+  assert.match(a.$('#dynamic').textContent, /zusammengeführt/);
   a.$('[data-help-lang="fr"]').click();
   await tick();
   assert.match(a.$('#dynamic').textContent, /Saisies/);
@@ -442,6 +443,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /Organisation & gouvernance/);
   assert.match(a.$('#dynamic').textContent, /Synchronisation et notifications/);
   assert.match(a.$('#dynamic').textContent, /même URL/);
+  assert.match(a.$('#dynamic').textContent, /réunies/);
 });
 
 test('Export dialog previews the professional report for each period', async t => {
@@ -971,7 +973,8 @@ test('Authenticated profile data is hydrated from D1 and local changes are uploa
   };
   const a = await app(t, '#overview', { [SESSION]: 'test-token', [STORE]: { entries: [{ id: 'local-entry', date: TODAY, minutes: 30 }] } }, fetch);
   await tick();
-  assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).entries[0].id, 'remote-entry');
+  const hydratedEntries = JSON.parse(a.window.localStorage.getItem(STORE)).entries.map(entry => entry.id);
+  assert.deepEqual(new Set(hydratedEntries), new Set(['remote-entry', 'local-entry']));
   a.window.localStorage.setItem(STORE, JSON.stringify({ entries: [{ id: 'new-entry', date: TODAY, minutes: 120 }] }));
   await new Promise(resolve => setTimeout(resolve, 750));
   const upload = requests.find(request => request.url.endsWith('/api/state') && request.method === 'PUT' && request.body.state[STORE].includes('new-entry'));

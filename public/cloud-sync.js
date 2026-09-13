@@ -33,7 +33,7 @@
   };
   const hasUserData = state => {
     const main = json(state[PREFIX + "v2"]);
-    if (main && (main.entries?.length || main.absences?.length || main.closedDays?.length || main.notes || main.weekdayTargets)) return true;
+    if (main && (main.entries?.length || main.categories?.length || main.projects?.length || main.favorites?.length || main.absences?.length || main.closedDays?.length || main.notes || main.weekdayTargets)) return true;
     return ["calendar.v1", "notes.v1", "reminders.v1", "reminders"].some(key => {
       const value = json(state[PREFIX + key]);
       return Array.isArray(value) ? value.length > 0 : value && Object.keys(value).length > 0;
@@ -43,7 +43,7 @@
     const values = [...(Array.isArray(remote) ? remote : []), ...(Array.isArray(local) ? local : [])];
     const seen = new Set();
     return values.filter(value => {
-      const key = value && typeof value === "object" ? value.id || JSON.stringify(value) : String(value);
+      const key = value && typeof value === "object" ? value.id || (value.name ? "name:" + value.name : value.label ? "label:" + value.label : JSON.stringify(value)) : String(value);
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -129,6 +129,10 @@
         } else if (changedDuringRequest) {
           apply(mergeLegacy(remote.state || {}, local));
           queued = true;
+        } else if (!wasHydrated && hasUserData(local)) {
+          const merged = mergeLegacy(remote.state || {}, local);
+          apply(merged);
+          queued = JSON.stringify(merged) !== JSON.stringify(remote.state || {});
         } else {
           apply(remote.state || {});
           queued = false;
