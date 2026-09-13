@@ -140,11 +140,11 @@
       if (remote.exists) {
         version = Number(remote.version || 0);
         const changedOnOtherDevice = wasHydrated && version > previousVersion && remote.updated_by_device && remote.updated_by_device !== device().id;
-        const localHasData = hasUserData(local), remoteHasData = hasUserData(remote.state || {});
-        if (localHasData && !remoteHasData) {
+        const localHasData = hasUserData(local);
+        if (localHasData) {
           const merged = mergeLegacy(remote.state || {}, local);
           apply(merged);
-          queued = true;
+          queued = JSON.stringify(merged) !== JSON.stringify(remote.state || {});
         } else if (changedDuringRequest && wasHydrated) {
           queued = true;
         } else if (changedDuringRequest) {
