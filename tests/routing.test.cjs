@@ -302,7 +302,7 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.match(a.$('script[src*="auth-ui.js"]').getAttribute('src'), /20260913-17/);
   assert.match(a.$('script[src*="api.js"]').getAttribute('src'), /20260913-2/);
   assert.match(a.$('script[src*="cloud-sync.js"]').getAttribute('src'), /20260913-4/);
-  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-20/);
+  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-18/);
   assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-7/);
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
   assert.match(stable, /#overviewView>\.work\{|\.metrics\{gap:10px;margin:0 0 20px/);
