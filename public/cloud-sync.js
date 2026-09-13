@@ -99,10 +99,10 @@
       return true;
     } catch (error) {
       if (error.status === 409 && error.data?.state) {
-        const latest = localRevision === revisionAtStart ? error.data.state : mergeLegacy(error.data.state, snapshot());
+        const latest = mergeLegacy(error.data.state, snapshot());
         apply(latest);
         version = Number(error.data.version || version);
-        queued = localRevision !== revisionAtStart;
+        queued = JSON.stringify(latest) !== JSON.stringify(error.data.state);
         status("conflict-resolved", { updatedAt: error.data.updated_at || null });
       } else {
         queued = true;

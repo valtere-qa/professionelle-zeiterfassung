@@ -302,7 +302,7 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.match(a.$('script[src*="auth-ui.js"]').getAttribute('src'), /20260913-16/);
   assert.match(a.$('script[src*="api.js"]').getAttribute('src'), /20260913-1/);
   assert.match(a.$('script[src*="cloud-sync.js"]').getAttribute('src'), /20260913-2/);
-  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-16/);
+  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-17/);
   assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-7/);
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
   assert.match(stable, /#overviewView>\.work\{|\.metrics\{gap:10px;margin:0 0 20px/);
@@ -428,6 +428,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /Synchronisation und Benachrichtigungen/);
   assert.match(a.$('#dynamic').textContent, /dieselbe App-URL/);
   assert.match(a.$('#dynamic').textContent, /zusammengeführt/);
+  assert.match(a.$('#dynamic').textContent, /Gleichzeitige Änderungen/);
   a.$('[data-help-lang="fr"]').click();
   await tick();
   assert.match(a.$('#dynamic').textContent, /Saisies/);
@@ -444,6 +445,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /Synchronisation et notifications/);
   assert.match(a.$('#dynamic').textContent, /même URL/);
   assert.match(a.$('#dynamic').textContent, /réunies/);
+  assert.match(a.$('#dynamic').textContent, /modifications simultanées/);
 });
 
 test('Export dialog previews the professional report for each period', async t => {
@@ -1015,6 +1017,28 @@ test('Remote profile changes announce the source device and offer a refresh', as
   assert.equal(changes[0].label, 'Laptop');
   assert.ok(a.$('.sync-change-notice').textContent.includes('Laptop'));
   assert.ok(a.$('.sync-change-notice').textContent.includes('Jetzt aktualisieren'));
+});
+
+test('Concurrent device updates are merged and retried', async t => {
+  let putCount = 0;
+  const fetch = async (url, options = {}) => {
+    if (String(url).endsWith('/api/auth/me')) return { ok: true, json: async () => ({ user: { id: 'u1', name: 'Valtère', email: 'v@example.ch' } }) };
+    if (String(url).endsWith('/api/state') && (options.method || 'GET') === 'GET') return { ok: true, json: async () => ({ exists: true, state: { [STORE]: JSON.stringify({ entries: [{ id: 'remote-entry', date: TODAY, minutes: 60 }] }) }, version: 3 }) };
+    if (String(url).endsWith('/api/state') && options.method === 'PUT') {
+      putCount += 1;
+      if (putCount === 1) return { ok: false, status: 409, json: async () => ({ conflict: true, state: { [STORE]: JSON.stringify({ entries: [{ id: 'other-entry', date: TODAY, minutes: 30 }] }) }, version: 4 }) };
+      return { ok: true, json: async () => ({ ok: true, version: 5 }) };
+    }
+    if (String(url).endsWith('/api/bootstrap')) return { ok: true, json: async () => ({ calendar_events: [], notes: [] }) };
+    return { ok: false, json: async () => ({ error: 'Unexpected test request' }) };
+  };
+  const a = await app(t, '#overview', { [SESSION]: 'test-token' }, fetch);
+  await tick();
+  a.window.localStorage.setItem(STORE, JSON.stringify({ entries: [{ id: 'local-entry', date: TODAY, minutes: 90 }] }));
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  const ids = JSON.parse(a.window.localStorage.getItem(STORE)).entries.map(entry => entry.id);
+  assert.deepEqual(new Set(ids), new Set(['other-entry', 'local-entry']));
+  assert.ok(putCount >= 2);
 });
 
 test('Owner profile exposes the protected user invitation control', async t => {
