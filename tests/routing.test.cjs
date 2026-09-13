@@ -306,6 +306,9 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.match(mobile, /#dynamic \.enterprise-grid/);
   assert.match(mobile, /#dynamic #calToday/);
   assert.match(mobile, /#dynamic #stableSearch/);
+  assert.match(mobile, /\\.sidebar \\.nav/);
+  assert.match(mobile, /overflow-y: auto !important/);
+  assert.match(mobile, /height: 100dvh/);
   assert.match(mobile, /overflow-y: auto/);
   assert.match(mobile, /scroll-padding-bottom/);
   assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-5/);
@@ -401,6 +404,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /vollständig sichtbar/);
   assert.match(a.$('#dynamic').textContent, /Abwesenheit in den Ansichten/);
   assert.match(a.$('#dynamic').textContent, /Smartphone/);
+  assert.match(a.$('#dynamic').textContent, /Alle Ansichten von Kategorien/);
   assert.match(a.$('#dynamic').textContent, /Kalender und Organisation/);
   assert.match(a.$('#dynamic').textContent, /Professionelle Exporte/);
   assert.match(a.$('#dynamic').textContent, /Timer-Buchungen/);
