@@ -298,7 +298,7 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.equal(a.$('#pdf').textContent.includes('PDF'), true);
   assert.ok(a.$('#entriesToday'));
   assert.ok(a.$('#overviewCalendarToday'));
-  assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-1/);
+  assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-2/);
   const mobile = readFileSync(resolve(publicDir, 'mobile-responsive.css'), 'utf8');
   assert.match(mobile, /safe-area-inset-bottom/);
   assert.match(mobile, /grid-template-columns: repeat\\(2, minmax\\(0, 1fr\\)\\)/);
@@ -395,6 +395,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /vollständig sichtbar/);
   assert.match(a.$('#dynamic').textContent, /Abwesenheit in den Ansichten/);
   assert.match(a.$('#dynamic').textContent, /Smartphone/);
+  assert.match(a.$('#dynamic').textContent, /Kalender und Organisation/);
   assert.match(a.$('#dynamic').textContent, /Professionelle Exporte/);
   assert.match(a.$('#dynamic').textContent, /Timer-Buchungen/);
   assert.match(a.$('#dynamic').textContent, /Semikolon/);

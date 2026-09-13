@@ -198,3 +198,64 @@
     box-shadow: none;
   }
 }
+
+/* Calendar and Organisation: keep dynamic panels usable on narrow screens. */
+@media (max-width: 650px) {
+  #dynamic .stable-cal-head { display: block; }
+  #dynamic .stable-cal-head > div:first-child h2 { font-size: 20px !important; line-height: 1.2; }
+  #dynamic .stable-cal-notice { margin-top: 12px; padding: 10px 0 10px 12px; }
+  #dynamic .stable-cal-actions { display: grid; grid-template-columns: 1fr; gap: 8px; width: 100%; margin-top: 14px; }
+  #dynamic .stable-cal-actions .btn { width: 100%; min-height: 44px; margin: 0; }
+  #dynamic .stable-cal-layout { display: flex; flex-direction: column; gap: 12px; }
+  #dynamic .stable-month, #dynamic .stable-agenda { min-height: 0; padding: 12px; border-radius: 14px; }
+  #dynamic .stable-month-head { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; gap: 8px; }
+  #dynamic .stable-month-head > div { min-width: 0; }
+  #dynamic .stable-month-head > div:nth-child(2) { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  #dynamic .stable-month-head h2 { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; }
+  #dynamic .stable-month-head .btn { width: 40px; min-width: 40px; min-height: 40px; padding: 8px; }
+  #dynamic #calToday { display: inline-flex; align-items: center; justify-content: center; width: auto; min-width: 64px; max-width: 100%; min-height: 36px; padding: 7px 10px; font-size: 12px; line-height: 1.1; white-space: nowrap; }
+  #dynamic .stable-weekdays, #dynamic .stable-grid { gap: 3px; }
+  #dynamic .stable-weekdays b { font-size: 10px; }
+  #dynamic .stable-day { min-height: 50px; padding: 6px 3px; align-items: center; text-align: center; font-size: 12px; }
+  #dynamic .stable-day small { font-size: 8px; }
+  #dynamic .stable-agenda-head { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
+  #dynamic .stable-agenda-head .seg { width: 100%; }
+  #dynamic .stable-agenda-head .seg button { flex: 1; min-height: 40px; }
+  #dynamic .stable-event { display: block; padding: 12px 0; }
+  #dynamic .stable-event-actions { display: flex; flex-wrap: wrap; justify-content: flex-start; margin-top: 10px; }
+  #dynamic .stable-event-actions .btn { flex: 1; min-height: 40px; }
+  #dynamic #stableSearch { display: block; box-sizing: border-box; width: 100%; max-width: none; min-width: 0; min-height: 44px; margin: 12px 0; padding: 10px 12px; font-size: 14px; line-height: 1.25; }
+
+  #dynamic .enterprise-shell { gap: 12px; }
+  #dynamic .enterprise-hero { display: block; padding: 14px; border-radius: 14px; }
+  #dynamic .enterprise-hero h2 { font-size: 20px; line-height: 1.2; }
+  #dynamic .enterprise-actions { display: grid; grid-template-columns: 1fr; width: 100%; gap: 8px; margin-top: 12px; }
+  #dynamic .enterprise-actions .btn { width: 100%; min-height: 44px; margin: 0; }
+  #dynamic .enterprise-kpis { grid-template-columns: 1fr; gap: 8px; }
+  #dynamic .enterprise-kpi { min-width: 0; padding: 12px; }
+  #dynamic .enterprise-kpi strong { font-size: 20px; }
+  #dynamic .enterprise-tabs { display: flex; overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  #dynamic .enterprise-tabs::-webkit-scrollbar { display: none; }
+  #dynamic .enterprise-tabs button { flex: 0 0 auto; min-height: 42px; }
+  #dynamic .enterprise-grid { grid-template-columns: 1fr; gap: 12px; }
+  #dynamic .enterprise-card { min-width: 0; padding: 14px; border-radius: 14px; overflow: hidden; }
+  #dynamic .enterprise-card-head { display: block; }
+  #dynamic .enterprise-card-head > .btn { width: 100%; min-height: 44px; margin-top: 10px; }
+  #dynamic .enterprise-form { grid-template-columns: 1fr; }
+  #dynamic .enterprise-table { display: block; width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+  #dynamic .enterprise-table td, #dynamic .enterprise-table th { padding: 9px 7px; }
+  #dynamic .enterprise-flow { grid-template-columns: 1fr; gap: 8px; }
+  #dynamic .enterprise-flow-step:not(:last-child)::after { display: none; }
+  #dynamic .enterprise-save-row { flex-direction: column; }
+  #dynamic .enterprise-save-row .btn { width: 100%; min-height: 44px; }
+  #dynamic .enterprise-modal { padding: 12px; }
+  #dynamic .enterprise-modal-card { width: 100%; max-height: calc(100dvh - 24px); padding: 14px; }
+  #dynamic .enterprise-check { align-items: flex-start; flex-wrap: wrap; }
+}
+
+@media (max-width: 420px) {
+  #dynamic .enterprise-kpis { grid-template-columns: 1fr; }
+  #dynamic .stable-month-head { grid-template-columns: 36px minmax(0, 1fr) 36px; }
+  #dynamic .stable-month-head .btn { width: 36px; min-width: 36px; padding: 6px; }
+  #dynamic #calToday { min-width: 58px; padding-inline: 7px; font-size: 11px; }
+}
