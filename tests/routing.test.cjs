@@ -298,7 +298,7 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.equal(a.$('#pdf').textContent.includes('PDF'), true);
   assert.ok(a.$('#entriesToday'));
   assert.ok(a.$('#overviewCalendarToday'));
-  assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-4/);
+  assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-5/);
   const mobile = readFileSync(resolve(publicDir, 'mobile-responsive.css'), 'utf8');
   assert.match(mobile, /safe-area-inset-bottom/);
   assert.match(mobile, /grid-template-columns: repeat\\(2, minmax\\(0, 1fr\\)\\)/);
@@ -306,13 +306,15 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.match(mobile, /#dynamic \.enterprise-grid/);
   assert.match(mobile, /#dynamic #calToday/);
   assert.match(mobile, /#dynamic #stableSearch/);
+  assert.match(mobile, /overflow: visible !important/);
+  assert.match(mobile, /main \\{ height: auto !important/);
   assert.match(mobile, /\\.sidebar \\.nav/);
   assert.match(mobile, /overflow-y: auto !important/);
   assert.match(mobile, /height: 100dvh/);
   assert.match(mobile, /overflow-y: auto/);
   assert.match(mobile, /scroll-padding-bottom/);
   assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-5/);
-  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-8/);
+  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-9/);
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
   assert.match(stable, /#overviewView>\.work\{|\.metrics\{gap:10px;margin:0 0 20px/);
 });
@@ -405,6 +407,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /Abwesenheit in den Ansichten/);
   assert.match(a.$('#dynamic').textContent, /Smartphone/);
   assert.match(a.$('#dynamic').textContent, /Alle Ansichten von Kategorien/);
+  assert.match(a.$('#dynamic').textContent, /einheitlicher vertikaler Seiten-Scrollbereich/);
   assert.match(a.$('#dynamic').textContent, /Kalender und Organisation/);
   assert.match(a.$('#dynamic').textContent, /Professionelle Exporte/);
   assert.match(a.$('#dynamic').textContent, /Timer-Buchungen/);
