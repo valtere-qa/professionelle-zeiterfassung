@@ -41,7 +41,7 @@
       grid.append(card);
       const storageNote = document.createElement("p");
       storageNote.className = "stable-help-steps";
-      storageNote.textContent = french ? "Toutes les saisies sont enregistrées dans D1 pour ce profil et restaurées après une nouvelle connexion. L’état central est d’abord sauvegardé, puis les tables détaillées sont actualisées automatiquement." : "Alle Erfassungen werden in D1 für dieses Profil gespeichert und nach einer erneuten Anmeldung wiederhergestellt. Der zentrale Profilstand wird zuerst gespeichert; danach werden die Detailtabellen automatisch aktualisiert.";
+      storageNote.textContent = french ? "Toutes les saisies sont enregistrées dans D1 pour ce profil et restaurées après une nouvelle connexion. L’état central est d’abord sauvegardé, puis les tables détaillées sont actualisées automatiquement. Utilisez l’URL officielle de l’application afin que tous les appareils utilisent la même API." : "Alle Erfassungen werden in D1 für dieses Profil gespeichert und nach einer erneuten Anmeldung wiederhergestellt. Der zentrale Profilstand wird zuerst gespeichert; danach werden die Detailtabellen automatisch aktualisiert. Verwende die offizielle App-URL, damit alle Geräte dieselbe API nutzen.";
       card.append(storageNote);
     }
   };
