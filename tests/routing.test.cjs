@@ -475,6 +475,36 @@ test('PDF export creates an A4 professional work report', async t => {
   assert.match(opened.html, /Analyse/);
 });
 
+test('PDF and CSV exports normalize object-backed category and project labels', async t => {
+  const a = await app(t, '#overview', {
+    [STORE]: {
+      entries: [{ date: TODAY, minutes: 60, category: { label: 'Organisation' }, project: { name: 'Intern' }, description: 'Objektprüfung' }]
+    }
+  });
+  let opened;
+  a.window.open = () => {
+    opened = { html: '', document: { write(value) { opened.html = value; }, close() {} } };
+    return opened;
+  };
+  a.$('#pdf').click();
+  a.$('.stable-save').click();
+  assert.doesNotMatch(opened.html, /\[object Object\]/);
+  assert.match(opened.html, /Organisation/);
+  assert.match(opened.html, /Intern/);
+
+  let captured;
+  a.window.Blob = class { constructor(parts) { this.parts = parts; } };
+  a.window.HTMLAnchorElement.prototype.click = function() {};
+  a.window.URL.createObjectURL = blob => { captured = blob; return 'blob:test'; };
+  a.window.URL.revokeObjectURL = () => {};
+  a.$('#csv').click();
+  a.$('.stable-save').click();
+  const csv = String(captured.parts[0]);
+  assert.doesNotMatch(csv, /\[object Object\]/);
+  assert.match(csv, /Organisation/);
+  assert.match(csv, /Intern/);
+});
+
 test('Enterprise Center covers organization, approvals, policy and integrations', async t => {
   const a = await app(t, '#enterprise', { [STORE]: { entries: [] } });
   assert.match(a.$('#dynamic').textContent, /Organisation & Arbeitszeit-Governance/);

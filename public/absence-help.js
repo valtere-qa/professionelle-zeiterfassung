@@ -19,7 +19,7 @@
       card.dataset.exportHelp = "true";
       card.innerHTML = french
         ? "<span class='stable-help-number'>13</span><h3>Exports professionnels</h3><p>Exportez un rapport clair pour un jour, une période, un mois ou une année.</p><div class='stable-help-steps'>Le CSV contient l’en-tête, le résumé, les absences à 0h 00 et les détails. Le PDF est optimisé pour A4 avec indicateurs, répartition par catégorie et projet et saisies détaillées.</div>"
-        : "<span class='stable-help-number'>13</span><h3>Professionelle Exporte</h3><p>Erstelle für Tag, Zeitraum, Monat oder Jahr einen klaren Arbeitszeitreport.</p><div class='stable-help-steps'>CSV enthält Berichtskopf, Zusammenfassung, Abwesenheiten mit 0h 00 und Detailfelder. PDF ist für A4 optimiert und enthält Kennzahlen, Verteilung nach Kategorie und Projekt sowie Detailbuchungen.</div>";
+        : "<span class='stable-help-number'>13</span><h3>Professionelle Exporte</h3><p>Erstelle für Tag, Zeitraum, Monat oder Jahr einen klaren Arbeitszeitreport.</p><div class='stable-help-steps'>CSV enthält Berichtskopf, Zusammenfassung, Abwesenheiten mit 0h 00 und Detailfelder. PDF ist für A4 optimiert, zeigt Kategorien und Projekte mit ihren Namen und enthält Kennzahlen, Verteilungen sowie Detailbuchungen.</div>";
       grid.append(card);
     }
   };
