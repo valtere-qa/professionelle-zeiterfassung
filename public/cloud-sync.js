@@ -1,5 +1,6 @@
 (() => {
   const PREFIX = "professionelle-zeiterfassung.";
+  const SNAPSHOT_MARKER = PREFIX + "sync-complete.v1";
   const EXCLUDED = new Set([PREFIX + "session", PREFIX + "logged-out", PREFIX + "cloud-sync", PREFIX + "device-id", PREFIX + "device-label"]);
   const PUSH_DELAY = 250;
   const POLL_INTERVAL = 5000;
@@ -84,7 +85,7 @@
     applying = true;
     try {
       const current = snapshot();
-      Object.keys(current).filter(key => !(key in state)).forEach(key => localStorage.removeItem(key));
+      if (state?.[SNAPSHOT_MARKER] === "1") Object.keys(current).filter(key => !(key in state)).forEach(key => localStorage.removeItem(key));
       Object.entries(state || {}).forEach(([key, value]) => {
         if (syncable(key)) localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
       });
@@ -100,7 +101,7 @@
   const push = async () => {
     if (pushing || !hydrated || !api()?.hasSession?.()) return false;
     pushing = true;
-    const revisionAtStart = localRevision, payload = snapshot();
+    const revisionAtStart = localRevision, payload = { ...snapshot(), [SNAPSHOT_MARKER]: "1" };
     status("syncing");
     try {
       const result = await api().saveState(payload, version, device());
@@ -139,7 +140,12 @@
       if (remote.exists) {
         version = Number(remote.version || 0);
         const changedOnOtherDevice = wasHydrated && version > previousVersion && remote.updated_by_device && remote.updated_by_device !== device().id;
-        if (changedDuringRequest && wasHydrated) {
+        const localHasData = hasUserData(local), remoteHasData = hasUserData(remote.state || {});
+        if (localHasData && !remoteHasData) {
+          const merged = mergeLegacy(remote.state || {}, local);
+          apply(merged);
+          queued = true;
+        } else if (changedDuringRequest && wasHydrated) {
           queued = true;
         } else if (changedDuringRequest) {
           apply(mergeLegacy(remote.state || {}, local));
