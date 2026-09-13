@@ -298,8 +298,8 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.equal(a.$('#pdf').textContent.includes('PDF'), true);
   assert.ok(a.$('#entriesToday'));
   assert.ok(a.$('#overviewCalendarToday'));
-  assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-3/);
-  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-2/);
+  assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-4/);
+  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-3/);
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
   assert.match(stable, /#overviewView>\.work\{|\.metrics\{gap:10px;margin:0 0 20px/);
 });
@@ -393,6 +393,8 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /Professionelle Exporte/);
   assert.match(a.$('#dynamic').textContent, /Timer-Buchungen/);
   assert.match(a.$('#dynamic').textContent, /Semikolon/);
+  assert.match(a.$('#dynamic').textContent, /benannte Druckansicht/);
+  assert.match(a.$('#dynamic').textContent, /about:blank/);
   a.$('[data-help-lang="fr"]').click();
   await tick();
   assert.match(a.$('#dynamic').textContent, /Saisies/);
@@ -405,6 +407,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /Exports professionnels/);
   assert.match(a.$('#dynamic').textContent, /saisies du minuteur/);
   assert.match(a.$('#dynamic').textContent, /point-virgule/);
+  assert.match(a.$('#dynamic').textContent, /about:blank/);
   assert.match(a.$('#dynamic').textContent, /Organisation & gouvernance/);
 });
 
@@ -470,18 +473,23 @@ test('PDF export creates an A4 professional work report', async t => {
   const a = await app(t, '#overview', {
     [STORE]: { entries: [{ date: TODAY, minutes: 90, category: 'Testing', project: 'Intern', description: 'Analyse' }] }
   });
-  let opened;
-  a.window.open = () => {
-    opened = { html: '', document: { write(value) { opened.html = value; }, close() {} } };
-    return opened;
-  };
+  let opened, captured;
+  a.window.Blob = class { constructor(parts, options) { this.parts = parts; this.type = options?.type; } };
+  a.window.URL.createObjectURL = blob => { captured = blob; return 'blob:pdf-report'; };
+  a.window.URL.revokeObjectURL = () => {};
+  a.window.open = (url, name) => { opened = { url, name }; return {}; };
   a.$('#pdf').click();
   a.$('.stable-save').click();
   assert.ok(opened);
-  assert.match(opened.html, /Arbeitszeitreport/);
-  assert.match(opened.html, /@page\{size:A4/);
-  assert.match(opened.html, /Detailbuchungen/);
-  assert.match(opened.html, /Analyse/);
+  assert.equal(opened.url, 'blob:pdf-report');
+  assert.equal(opened.name, 'zeiterfassung-pdf');
+  assert.doesNotMatch(opened.url, /about:blank/);
+  assert.equal(captured.type, 'text/html;charset=utf-8');
+  const reportHtml = String(captured.parts[0]);
+  assert.match(reportHtml, /Arbeitszeitreport/);
+  assert.match(reportHtml, /@page\{size:A4/);
+  assert.match(reportHtml, /Detailbuchungen/);
+  assert.match(reportHtml, /Analyse/);
 });
 
 test('PDF and CSV exports normalize object-backed category and project labels', async t => {
@@ -490,18 +498,18 @@ test('PDF and CSV exports normalize object-backed category and project labels', 
       entries: [{ date: TODAY, minutes: 60, category: { label: 'Organisation' }, project: { name: 'Intern' }, description: 'Objektprüfung' }]
     }
   });
-  let opened;
-  a.window.open = () => {
-    opened = { html: '', document: { write(value) { opened.html = value; }, close() {} } };
-    return opened;
-  };
+  let opened, captured;
+  a.window.Blob = class { constructor(parts, options) { this.parts = parts; this.type = options?.type; } };
+  a.window.URL.createObjectURL = blob => { captured = blob; return 'blob:pdf-report'; };
+  a.window.URL.revokeObjectURL = () => {};
+  a.window.open = (url, name) => { opened = { url, name }; return {}; };
   a.$('#pdf').click();
   a.$('.stable-save').click();
-  assert.doesNotMatch(opened.html, /\[object Object\]/);
-  assert.match(opened.html, /Organisation/);
-  assert.match(opened.html, /Intern/);
+  const reportHtml = String(captured.parts[0]);
+  assert.doesNotMatch(reportHtml, /\[object Object\]/);
+  assert.match(reportHtml, /Organisation/);
+  assert.match(reportHtml, /Intern/);
 
-  let captured;
   a.window.Blob = class { constructor(parts) { this.parts = parts; } };
   a.window.HTMLAnchorElement.prototype.click = function() {};
   a.window.URL.createObjectURL = blob => { captured = blob; return 'blob:test'; };
