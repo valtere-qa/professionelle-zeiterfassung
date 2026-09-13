@@ -3,6 +3,7 @@
   const EXCLUDED = new Set([PREFIX + "session", PREFIX + "logged-out", PREFIX + "cloud-sync", PREFIX + "device-id", PREFIX + "device-label"]);
   const PUSH_DELAY = 250;
   const POLL_INTERVAL = 5000;
+  const RETRY_DELAYS = [1000, 3000, 8000, 15000];
   const api = () => window.ZeiterfassungAPI;
   const deviceId = () => {
     const key = PREFIX + "device-id";
@@ -66,8 +67,19 @@
     return merged;
   };
   let applying = false, hydrated = false, pulling = false, pushing = false, syncing = false;
-  let timer = 0, version = 0, queued = false, localRevision = 0;
+  let timer = 0, retryTimer = 0, retryAttempt = 0, version = 0, queued = false, localRevision = 0;
   const status = (state, detail = {}) => window.dispatchEvent(new CustomEvent("zeiterfassung-sync-status", { detail: { state, version, ...detail } }));
+  const scheduleRetry = () => {
+    if (retryTimer || !api()?.hasSession?.() || document.hidden) return;
+    const delay = RETRY_DELAYS[Math.min(retryAttempt, RETRY_DELAYS.length - 1)];
+    retryAttempt = Math.min(retryAttempt + 1, RETRY_DELAYS.length - 1);
+    retryTimer = setTimeout(async () => {
+      retryTimer = 0;
+      const success = await sync();
+      if (!success) scheduleRetry();
+    }, delay);
+  };
+  const clearRetry = () => { retryAttempt = 0; clearTimeout(retryTimer); retryTimer = 0; };
   const apply = state => {
     applying = true;
     try {
@@ -95,6 +107,7 @@
       version = Number(result.version || version);
       if (localRevision === revisionAtStart) queued = false;
       else schedulePush();
+      clearRetry();
       status("saved", { updatedAt: result.updated_at || null });
       return true;
     } catch (error) {
@@ -104,14 +117,16 @@
         version = Number(error.data.version || version);
         queued = JSON.stringify(latest) !== JSON.stringify(error.data.state);
         status("conflict-resolved", { updatedAt: error.data.updated_at || null });
+        if (queued) schedulePush();
       } else {
         queued = true;
         status("retry", { message: error.message });
+        scheduleRetry();
       }
       return false;
     } finally {
       pushing = false;
-      if (queued) schedulePush();
+      if (queued && localRevision !== revisionAtStart) schedulePush();
     }
   };
   const pull = async () => {
@@ -151,10 +166,12 @@
       }
       hydrated = true;
       if (queued) schedulePush();
+      clearRetry();
       status("ready", { updatedAt: remote.updated_at || null });
       return true;
     } catch (error) {
       status("retry", { message: error.message });
+      scheduleRetry();
       console.warn("Profildaten konnten nicht synchronisiert werden.", error);
       return false;
     } finally { pulling = false; }
