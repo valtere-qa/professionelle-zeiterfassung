@@ -301,6 +301,7 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-3/);
   assert.match(a.$('script[src*="auth-ui.js"]').getAttribute('src'), /20260913-17/);
   assert.match(a.$('script[src*="api.js"]').getAttribute('src'), /20260913-2/);
+  assert.equal(a.window.TIME_TRACKING_API_BASE, 'https://professionelle-zeiterfassung.vafa-qa-engineering.workers.dev');
   assert.match(a.$('script[src*="cloud-sync.js"]').getAttribute('src'), /20260913-4/);
   assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-18/);
   assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-7/);
