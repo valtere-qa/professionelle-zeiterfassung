@@ -23,6 +23,7 @@ function token() { return `${id()}${id().replaceAll("-", "")}`; }
 async function body(request) { try { return await request.json(); } catch { return {}; } }
 
 let schemaReady;
+const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 
 async function ensureSchema(env) {
   if (schemaReady) return schemaReady;
@@ -76,6 +77,20 @@ async function ensureSchema(env) {
   })();
   try { return await schemaReady; }
   catch (error) { schemaReady = null; throw error; }
+}
+
+async function ensureSchemaWithRetry(env) {
+  let lastError;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      return await ensureSchema(env);
+    } catch (error) {
+      lastError = error;
+      if (!/(?:locked|busy|SQLITE_BUSY)/i.test(String(error?.message || error)) || attempt === 3) throw error;
+      await wait(200 * (attempt + 1));
+    }
+  }
+  throw lastError;
 }
 
 async function currentUser(request, env) {
@@ -368,7 +383,7 @@ export default {
     if (request.method === "OPTIONS") return cors(request, new Response(null, { status: 204 }));
     let response;
     try {
-      await ensureSchema(env);
+      await ensureSchemaWithRetry(env);
       response = await auth(request, env);
       if (!response) {
         const url = new URL(request.url);
