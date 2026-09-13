@@ -299,9 +299,9 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.ok(a.$('#entriesToday'));
   assert.ok(a.$('#overviewCalendarToday'));
   assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-3/);
-  assert.match(a.$('script[src*="auth-ui.js"]').getAttribute('src'), /20260913-16/);
+  assert.match(a.$('script[src*="auth-ui.js"]').getAttribute('src'), /20260913-17/);
   assert.match(a.$('script[src*="api.js"]').getAttribute('src'), /20260913-2/);
-  assert.match(a.$('script[src*="cloud-sync.js"]').getAttribute('src'), /20260913-3/);
+  assert.match(a.$('script[src*="cloud-sync.js"]').getAttribute('src'), /20260913-4/);
   assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-18/);
   assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-7/);
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
