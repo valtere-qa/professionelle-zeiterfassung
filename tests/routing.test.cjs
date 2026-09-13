@@ -298,8 +298,8 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.equal(a.$('#pdf').textContent.includes('PDF'), true);
   assert.ok(a.$('#entriesToday'));
   assert.ok(a.$('#overviewCalendarToday'));
-  assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-4/);
-  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-3/);
+  assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-5/);
+  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-4/);
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
   assert.match(stable, /#overviewView>\.work\{|\.metrics\{gap:10px;margin:0 0 20px/);
 });
@@ -395,6 +395,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /Semikolon/);
   assert.match(a.$('#dynamic').textContent, /benannte Druckansicht/);
   assert.match(a.$('#dynamic').textContent, /about:blank/);
+  assert.match(a.$('#dynamic').textContent, /Seitenumbrüche/);
   a.$('[data-help-lang="fr"]').click();
   await tick();
   assert.match(a.$('#dynamic').textContent, /Saisies/);
@@ -488,6 +489,11 @@ test('PDF export creates an A4 professional work report', async t => {
   const reportHtml = String(captured.parts[0]);
   assert.match(reportHtml, /Arbeitszeitreport/);
   assert.match(reportHtml, /@page\{size:A4/);
+  assert.match(reportHtml, /break-before:page/);
+  assert.match(reportHtml, /break-inside:avoid/);
+  assert.match(reportHtml, /page-break-inside:avoid/);
+  assert.match(reportHtml, /display:table-header-group/);
+  assert.match(reportHtml, /\.footer\{position:static/);
   assert.match(reportHtml, /Detailbuchungen/);
   assert.match(reportHtml, /Analyse/);
 });
