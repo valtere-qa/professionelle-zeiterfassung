@@ -296,6 +296,7 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.equal(a.$('#timer').textContent.includes('Timer starten'), true);
   assert.equal(a.$('#csv').textContent.includes('CSV'), true);
   assert.equal(a.$('#pdf').textContent.includes('PDF'), true);
+  assert.ok(a.$('#entriesToday'));
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
   assert.match(stable, /#overviewView>\.work\{|\.metrics\{gap:10px;margin:0 0 20px/);
 });
@@ -378,13 +379,14 @@ test('Empty checklist task shows a red validation message and focuses the field'
 test('Help provides German and French documentation for the app functions', async t => {
   const a = await app(t, '#help');
   await tick();
-  assert.equal(a.window.document.querySelectorAll('.stable-help-card').length, 11);
+  assert.equal(a.window.document.querySelectorAll('.stable-help-card').length, 12);
   assert.match(a.$('#dynamic').textContent, /Timer/);
   assert.match(a.$('#dynamic').textContent, /Tagesabschluss/);
   assert.match(a.$('#dynamic').textContent, /Tagessaldo/);
   assert.match(a.$('#dynamic').textContent, /Monatssaldo.*monatliche Sollzeit/);
   assert.match(a.$('#dynamic').textContent, /ausgewählte Datum/);
   assert.match(a.$('#dynamic').textContent, /vollständig sichtbar/);
+  assert.match(a.$('#dynamic').textContent, /Abwesenheit in den Ansichten/);
   a.$('[data-help-lang="fr"]').click();
   await tick();
   assert.match(a.$('#dynamic').textContent, /Saisies/);
@@ -393,6 +395,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /solde journalier/);
   assert.match(a.$('#dynamic').textContent, /solde mensuel.*objectif mensuel/);
   assert.match(a.$('#dynamic').textContent, /entièrement visibles/);
+  assert.match(a.$('#dynamic').textContent, /Absences dans les vues/);
   assert.match(a.$('#dynamic').textContent, /Organisation & gouvernance/);
 });
 
@@ -644,6 +647,28 @@ test('Calendar marks every day that contains a booking', async t => {
   assert.equal(a.window.document.querySelectorAll('#days button.has-booking').length, 1);
 });
 
+test('Overview calendar keeps booking marks when switching months', async t => {
+  const current = new Date(TODAY + 'T12:00:00');
+  const dayKey = date => date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+  const previous = new Date(current);
+  previous.setMonth(previous.getMonth() - 1, 1);
+  const currentBooking = new Date(current.getFullYear(), current.getMonth(), 1, 12);
+  const previousBooking = new Date(previous.getFullYear(), previous.getMonth(), 1, 12);
+  const a = await app(t, '#overview', {
+    [STORE]: { entries: [
+      { date: dayKey(currentBooking), minutes: 30, category: 'Testing', project: 'Intern' },
+      { date: dayKey(previousBooking), minutes: 45, category: 'Meeting', project: 'Intern' }
+    ] }
+  });
+  assert.ok(a.$('#days button.has-booking'));
+  a.$('#prev').click();
+  await tick();
+  assert.ok([...a.window.document.querySelectorAll('#days button:not(.muted)')].find(button => button.textContent.trim() === '1' && button.classList.contains('has-booking')));
+  a.$('#next').click();
+  await tick();
+  assert.ok([...a.window.document.querySelectorAll('#days button:not(.muted)')].find(button => button.textContent.trim() === '1' && button.classList.contains('has-booking')));
+});
+
 test('Notification test uses the browser notification API and app fallback', async t => {
   const a = await app(t, '#calendar');
   const sent = [];
@@ -854,13 +879,22 @@ test('Clicking a weekly stats bar opens that exact day in entries', async t => {
 });
 
 test('Absence dates are greyed out and block time capture', async t => {
+  const dayNames = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+  const todayName = dayNames[new Date(TODAY + 'T12:00:00').getDay()];
   const a = await app(t, '#overview', {
-    [STORE]: { entries: [], daily: '8h 30', absences: [{ id: 'absence-1', type: 'Ferien', start: TODAY, end: TODAY }] }
+    [STORE]: { entries: [], daily: '8h 30', weekdayTargets: { [todayName]: '8h 30' }, absences: [{ id: 'absence-1', type: 'Ferien', start: TODAY, end: TODAY }] }
   });
   assert.equal(a.$('#todayTotal').textContent, '0h 00');
   assert.equal(a.$('#todayTotal').closest('.metric').querySelector('label').textContent, 'Ferien');
   assert.match(a.$('#absenceMetricNote').textContent, /Ferien.*0h 00/);
-  assert.equal(a.$('#monthBalance').textContent, '−178h 30');
+  const monthStart = new Date(Number(TODAY.slice(0, 4)), Number(TODAY.slice(5, 7)) - 1, 1);
+  const monthDays = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0).getDate();
+  let expectedTarget = 0;
+  for (let day = 1; day <= monthDays; day += 1) {
+    const date = new Date(monthStart.getFullYear(), monthStart.getMonth(), day);
+    if (date.getDay() !== 6 && date.toISOString().slice(0, 10) !== TODAY) expectedTarget += 510;
+  }
+  assert.equal(a.$('#monthBalance').textContent, '−' + Math.floor(expectedTarget / 60) + 'h ' + String(expectedTarget % 60).padStart(2, '0'));
   assert.equal(a.$('#addEntry').disabled, true);
   assert.equal(a.$('#timer').disabled, true);
   assert.match(a.$('#qualityTitle').textContent, /Ferien/);
@@ -887,6 +921,9 @@ test('Absence days are excluded from the evaluation and marked with zero', async
     }
   });
   assert.match(a.$('.stats-hero').textContent, /Krankheit/);
+  assert.match(a.$('#statsAbsenceNotice').textContent, /Krankheit/);
+  assert.match(a.$('#statsAbsenceNotice').textContent, /0h 00/);
+  assert.match(a.$('#statsAbsenceNotice').textContent, /keine Zeitbuchung erforderlich/i);
   assert.match(a.$('.stats-metrics article strong').textContent, /1h 00/);
   const absenceBar = a.$('.stats-bar-col[data-stats-date="' + TODAY + '"]');
   assert.ok(absenceBar);
@@ -896,6 +933,34 @@ test('Absence days are excluded from the evaluation and marked with zero', async
   await tick();
   assertView(a, 'overview');
   assert.match(a.$('#qualityTitle').textContent, /Krankheit/);
+});
+
+test('Entries view explains the selected absence day', async t => {
+  const a = await app(t, '#entries', {
+    [STORE]: { entries: [], absences: [{ id: 'absence-entries', type: 'Ferien', start: TODAY, end: TODAY }] }
+  });
+  assert.ok(a.$('#entriesAbsenceNotice'));
+  assert.match(a.$('#entriesAbsenceNotice').textContent, /Ferien/);
+  assert.match(a.$('#entriesAbsenceNotice').textContent, /0h 00/);
+  assert.match(a.$('#entriesAbsenceNotice').textContent, /keine Zeitbuchung erforderlich/i);
+});
+
+test('Week view marks absence days and supports day/week switching', async t => {
+  const a = await app(t, '#week', {
+    [STORE]: { entries: [], absences: [{ id: 'absence-week', type: 'Krankheit', start: TODAY, end: TODAY }] }
+  });
+  const day = a.$('.week-day-card[data-week-date="' + TODAY + '"]');
+  assert.ok(day?.classList.contains('is-absence'));
+  assert.match(day.textContent, /Krankheit/);
+  assert.match(day.textContent, /0h 00/);
+  assert.match(a.$('#weekAbsenceNotice').textContent, /Krankheit/);
+  a.$('#weekModeDay').click();
+  await tick();
+  assertView(a, 'overview');
+  a.click('week');
+  assertView(a, 'week');
+  a.$('#weekModeWeek').click();
+  assertView(a, 'week');
 });
 
 test('Stable calendar marks absence dates and explains that no booking is needed', async t => {
@@ -909,7 +974,9 @@ test('Stable calendar marks absence dates and explains that no booking is needed
 });
 
 test('Daily target accepts hours and minutes and saves per-weekday settings', async t => {
-  const a = await app(t, '#overview', { [STORE]: { entries: [], daily: '8h 30', weekly: '42h 00' } });
+  const dayNames = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+  const todayName = dayNames[new Date(TODAY + 'T12:00:00').getDay()];
+  const a = await app(t, '#overview', { [STORE]: { entries: [], daily: '8h 30', weekly: '42h 00', weekdayTargets: { [todayName]: '8h 30' } } });
   assert.equal(a.$('#daily').value, '8h 30');
   assert.match(a.$('#balance').textContent, /8h 30/);
   a.click('settings');

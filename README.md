@@ -183,6 +183,8 @@ Aktueller automatisierter Stand: **75 Tests bestanden, 0 fehlgeschlagen**. Die m
 
 Die Auswertung entspricht jetzt dem professionellen Dashboard-Aufbau: Zeitraumkopf, PDF-Aktion, sieben Kennzahlen, Wochenvergleich „Gebuchte Zeit vs. Tagessoll“ und Zeitverteilung nach Kategorie. Alle Werte werden aus den lokalen Buchungen berechnet und reagieren direkt auf Änderungen.
 
+Abwesenheiten werden in „Einträge“, „Woche“ und „Auswertung“ eindeutig angezeigt. Ferien, Krankheit und weitere Abwesenheiten zeigen den Grund, das Datum und `0h 00`; an diesen Tagen ist keine Zeitbuchung erforderlich. Die betroffenen Tage werden in der Wochenansicht ausgegraut. Abwesenheitstage werden bei der Wochen- und Monats-Sollzeit sowie bei der Auswertung automatisch berücksichtigt. Der Kalender-Picker in der Übersicht enthält zusätzlich die Schaltfläche „Heute“.
+
 Der Reiter „Woche“ zeigt die aktuelle Arbeitswoche mit Arbeitsrahmen, Tages-/Wochensoll, Ist-Zeit, Fortschrittsbalken, Wochensaldo und sieben anklickbaren Tageskarten. Die Karten verwenden eine dezente 3D-Tiefe und bleiben auf Mobilgeräten zweispaltig und touch-freundlich.
 
 Die gesamte App verwendet ein einheitliches 3D-Fluent-System: abgestufte Kartenflächen, dezente Tiefenschatten, erhöhte Primäraktionen, aktive Navigationsflächen, interaktive Eingabefelder und klare gedrückte/hover-/Fokus-Zustände. Auf Mobilgeräten werden die Tiefen reduziert, damit Bedienbarkeit und Performance erhalten bleiben.
