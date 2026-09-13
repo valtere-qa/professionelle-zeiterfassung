@@ -34,7 +34,7 @@ async function ensureSchema(env) {
     CREATE TABLE IF NOT EXISTS settings (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, key TEXT NOT NULL, value TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(user_id,key));
     CREATE TABLE IF NOT EXISTS calendar_events (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, event_type TEXT NOT NULL DEFAULT 'Termin', title TEXT NOT NULL, event_date TEXT NOT NULL, all_day INTEGER NOT NULL DEFAULT 0, start_time TEXT, end_time TEXT, place TEXT, reminder_minutes INTEGER NOT NULL DEFAULT 0, note TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS notes (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, title TEXT NOT NULL, content TEXT NOT NULL, checklist_json TEXT NOT NULL DEFAULT '[]', color TEXT NOT NULL DEFAULT 'blau', section TEXT NOT NULL DEFAULT 'Arbeit', archived INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
-    CREATE TABLE IF NOT EXISTS user_states (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, payload_json TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS user_states (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, payload_json TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL, updated_by_device TEXT, updated_by_label TEXT);
     CREATE TABLE IF NOT EXISTS admin_invites (id TEXT PRIMARY KEY, created_by TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, organization_id TEXT, email TEXT, code_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, used_at TEXT, created_at TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS idx_calendar_user_date ON calendar_events(user_id,event_date);
     CREATE INDEX IF NOT EXISTS idx_notes_user_updated ON notes(user_id,updated_at);
@@ -44,6 +44,8 @@ async function ensureSchema(env) {
   `);
   try { await env.DB.exec("ALTER TABLE notes ADD COLUMN section TEXT NOT NULL DEFAULT 'Arbeit'"); } catch {}
   try { await env.DB.exec("ALTER TABLE admin_invites ADD COLUMN organization_id TEXT"); } catch {}
+  try { await env.DB.exec("ALTER TABLE user_states ADD COLUMN updated_by_device TEXT"); } catch {}
+  try { await env.DB.exec("ALTER TABLE user_states ADD COLUMN updated_by_label TEXT"); } catch {}
   await env.DB.exec(`
     CREATE TABLE IF NOT EXISTS organizations (id TEXT PRIMARY KEY, name TEXT NOT NULL, code TEXT NOT NULL UNIQUE, timezone TEXT NOT NULL DEFAULT 'Europe/Zurich', locale TEXT NOT NULL DEFAULT 'de-CH', week_start INTEGER NOT NULL DEFAULT 1, owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS organization_members (id TEXT PRIMARY KEY, organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE, user_id TEXT REFERENCES users(id) ON DELETE SET NULL, display_name TEXT NOT NULL, email TEXT, employee_number TEXT, role TEXT NOT NULL DEFAULT 'employee', status TEXT NOT NULL DEFAULT 'active', department_id TEXT, manager_member_id TEXT, location TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(organization_id, email), UNIQUE(organization_id, employee_number));
@@ -289,10 +291,10 @@ async function appApi(request, env, user) {
   if (url.pathname.startsWith("/api/enterprise/")) return enterpriseApi(request, env, user);
   const path = url.pathname, data = await body(request);
   if (path === "/api/state" && request.method === "GET") {
-    const row = await env.DB.prepare("SELECT payload_json,version,updated_at FROM user_states WHERE user_id=?").bind(user.id).first();
+    const row = await env.DB.prepare("SELECT payload_json,version,updated_at,updated_by_device,updated_by_label FROM user_states WHERE user_id=?").bind(user.id).first();
     if (row) {
-      try { return json({ state: JSON.parse(row.payload_json), version: Number(row.version || 1), updated_at: row.updated_at, exists: true }); }
-      catch { return json({ state: {}, version: Number(row.version || 1), updated_at: row.updated_at, exists: true }); }
+      try { return json({ state: JSON.parse(row.payload_json), version: Number(row.version || 1), updated_at: row.updated_at, updated_by_device: row.updated_by_device || null, updated_by_label: row.updated_by_label || null, exists: true }); }
+      catch { return json({ state: {}, version: Number(row.version || 1), updated_at: row.updated_at, updated_by_device: row.updated_by_device || null, updated_by_label: row.updated_by_label || null, exists: true }); }
     }
     return json({ state: await legacyState(env, user), version: 0, updated_at: null, exists: false });
   }
@@ -307,8 +309,9 @@ async function appApi(request, env, user) {
       const latest = await env.DB.prepare("SELECT payload_json,version,updated_at FROM user_states WHERE user_id=?").bind(user.id).first();
       return json({ error: "Der Profilzustand wurde auf einem anderen Gerät geändert.", conflict: true, state: JSON.parse(latest.payload_json), version: Number(latest.version), updated_at: latest.updated_at }, 409);
     }
-    const nextVersion = currentVersion + 1, timestamp = now();
-    await env.DB.prepare("INSERT INTO user_states (user_id,payload_json,version,updated_at) VALUES (?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET payload_json=excluded.payload_json,version=excluded.version,updated_at=excluded.updated_at").bind(user.id, serialized, nextVersion, timestamp).run();
+    const nextVersion = currentVersion + 1, timestamp = now(), device = data.device && typeof data.device === "object" ? data.device : {};
+    const deviceId = String(device.id || "").slice(0, 120) || null, deviceLabel = String(device.label || "").slice(0, 80) || null;
+    await env.DB.prepare("INSERT INTO user_states (user_id,payload_json,version,updated_at,updated_by_device,updated_by_label) VALUES (?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET payload_json=excluded.payload_json,version=excluded.version,updated_at=excluded.updated_at,updated_by_device=excluded.updated_by_device,updated_by_label=excluded.updated_by_label").bind(user.id, serialized, nextVersion, timestamp, deviceId, deviceLabel).run();
     return json({ ok: true, version: nextVersion, updated_at: timestamp });
   }
   if (path === "/api/bootstrap" && request.method === "GET") {

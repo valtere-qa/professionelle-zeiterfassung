@@ -6,7 +6,9 @@ CREATE TABLE IF NOT EXISTS user_states (
   user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   payload_json TEXT NOT NULL,
   version INTEGER NOT NULL DEFAULT 1,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  updated_by_device TEXT,
+  updated_by_label TEXT
 );
 
 -- New accounts can only be created with a short-lived, one-time admin invite

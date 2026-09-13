@@ -299,10 +299,10 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.ok(a.$('#entriesToday'));
   assert.ok(a.$('#overviewCalendarToday'));
   assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-3/);
-  assert.match(a.$('script[src*="auth-ui.js"]').getAttribute('src'), /20260913-15/);
+  assert.match(a.$('script[src*="auth-ui.js"]').getAttribute('src'), /20260913-16/);
   assert.match(a.$('script[src*="api.js"]').getAttribute('src'), /20260913-1/);
-  assert.match(a.$('script[src*="cloud-sync.js"]').getAttribute('src'), /20260913-1/);
-  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-13/);
+  assert.match(a.$('script[src*="cloud-sync.js"]').getAttribute('src'), /20260913-2/);
+  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-14/);
   assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-7/);
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
   assert.match(stable, /#overviewView>\.work\{|\.metrics\{gap:10px;margin:0 0 20px/);
@@ -425,7 +425,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /Timer-Buchungen/);
   assert.match(a.$('#dynamic').textContent, /Semikolon/);
   assert.match(a.$('#dynamic').textContent, /Mobiler Login-Bereich/);
-  assert.match(a.$('#dynamic').textContent, /Synchronisation und geschützte Zugänge/);
+  assert.match(a.$('#dynamic').textContent, /Synchronisation und Benachrichtigungen/);
   a.$('[data-help-lang="fr"]').click();
   await tick();
   assert.match(a.$('#dynamic').textContent, /Saisies/);
@@ -439,7 +439,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /saisies du minuteur/);
   assert.match(a.$('#dynamic').textContent, /point-virgule/);
   assert.match(a.$('#dynamic').textContent, /Organisation & gouvernance/);
-  assert.match(a.$('#dynamic').textContent, /Synchronisation et accès protégés/);
+  assert.match(a.$('#dynamic').textContent, /Synchronisation et notifications/);
 });
 
 test('Export dialog previews the professional report for each period', async t => {
@@ -972,17 +972,44 @@ test('Authenticated profile data is hydrated from D1 and local changes are uploa
   assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).entries[0].id, 'remote-entry');
   a.window.localStorage.setItem(STORE, JSON.stringify({ entries: [{ id: 'new-entry', date: TODAY, minutes: 120 }] }));
   await new Promise(resolve => setTimeout(resolve, 750));
-  assert.ok(requests.some(request => request.url.endsWith('/api/state') && request.method === 'PUT' && request.body.state[STORE].includes('new-entry')));
+  const upload = requests.find(request => request.url.endsWith('/api/state') && request.method === 'PUT' && request.body.state[STORE].includes('new-entry'));
+  assert.ok(upload);
+  assert.ok(upload.body.device.id);
+  assert.ok(upload.body.device.label);
 });
 
 test('Registration protection and admin invitation endpoints are defined server-side', async t => {
   const worker = readFileSync(resolve(__dirname, '../worker.js'), 'utf8');
   assert.match(worker, /CREATE TABLE IF NOT EXISTS user_states/);
+  assert.match(worker, /updated_by_device/);
+  assert.match(worker, /updated_by_label/);
   assert.match(worker, /CREATE TABLE IF NOT EXISTS admin_invites/);
   assert.match(worker, /Die Registrierung ist geschützt/);
   assert.match(worker, /Nur Owner, Admin oder HR dürfen Benutzer einladen/);
   assert.match(worker, /path === "\/api\/state"/);
   assert.match(worker, /url\.pathname === "\/api\/auth\/invites"/);
+});
+
+test('Remote profile changes announce the source device and offer a refresh', async t => {
+  let stateReads = 0;
+  const fetch = async (url, options = {}) => {
+    if (String(url).endsWith('/api/auth/me')) return { ok: true, json: async () => ({ user: { id: 'u1', name: 'Valtère', email: 'v@example.ch' } }) };
+    if (String(url).endsWith('/api/state')) {
+      stateReads += 1;
+      const version = stateReads > 1 ? 2 : 1;
+      return { ok: true, json: async () => ({ exists: true, state: { [STORE]: JSON.stringify({ entries: [{ id: 'remote-' + version, date: TODAY, minutes: 30 }] }) }, version, updated_by_device: 'other-device', updated_by_label: 'Laptop' }) };
+    }
+    if (String(url).endsWith('/api/bootstrap')) return { ok: true, json: async () => ({ calendar_events: [], notes: [] }) };
+    return { ok: false, json: async () => ({ error: 'Unexpected test request' }) };
+  };
+  const a = await app(t, '#overview', { [SESSION]: 'test-token' }, fetch);
+  const changes = [];
+  a.window.addEventListener('zeiterfassung-remote-change', event => changes.push(event.detail));
+  await a.window.ZeiterfassungCloudSync.pull();
+  await tick();
+  assert.equal(changes[0].label, 'Laptop');
+  assert.ok(a.$('.sync-change-notice').textContent.includes('Laptop'));
+  assert.ok(a.$('.sync-change-notice').textContent.includes('Jetzt aktualisieren'));
 });
 
 test('Owner profile exposes the protected user invitation control', async t => {

@@ -18,7 +18,7 @@ window.ZeiterfassungAPI = {
   async logout() { await apiRequest("/api/auth/logout", { method: "POST" }).catch(() => {}); localStorage.removeItem(SESSION_KEY); },
   me() { return apiRequest("/api/auth/me"); },
   getState() { return apiRequest("/api/state"); },
-  saveState(state, version = 0) { return apiRequest("/api/state", { method: "PUT", body: JSON.stringify({ state, version }) }); },
+  saveState(state, version = 0, device = {}) { return apiRequest("/api/state", { method: "PUT", body: JSON.stringify({ state, version, device }) }); },
   createInvite(email = "") { return apiRequest("/api/auth/invites", { method: "POST", body: JSON.stringify({ email }) }); },
   users() { return apiRequest("/api/auth/users"); },
   bootstrap() { return apiRequest("/api/bootstrap"); },

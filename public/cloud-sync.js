@@ -1,7 +1,26 @@
 (() => {
   const PREFIX = "professionelle-zeiterfassung.";
-  const EXCLUDED = new Set([PREFIX + "session", PREFIX + "logged-out", PREFIX + "cloud-sync"]);
+  const EXCLUDED = new Set([PREFIX + "session", PREFIX + "logged-out", PREFIX + "cloud-sync", PREFIX + "device-id", PREFIX + "device-label"]);
+  const PUSH_DELAY = 250;
+  const POLL_INTERVAL = 5000;
   const api = () => window.ZeiterfassungAPI;
+  const deviceId = () => {
+    const key = PREFIX + "device-id";
+    let value = localStorage.getItem(key);
+    if (!value) { value = crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`; localStorage.setItem(key, value); }
+    return value;
+  };
+  const deviceLabel = () => {
+    const key = PREFIX + "device-label";
+    let value = localStorage.getItem(key);
+    if (!value) {
+      const ua = navigator.userAgent || "";
+      value = /SM-A55/i.test(ua) ? "Samsung A55" : /Android/i.test(ua) ? "Android-Gerät" : /iPhone|iPad/i.test(ua) ? "Apple-Gerät" : navigator.platform || "Browser";
+      localStorage.setItem(key, value);
+    }
+    return value;
+  };
+  const device = () => ({ id: deviceId(), label: deviceLabel() });
   const syncable = key => typeof key === "string" && key.startsWith(PREFIX) && !EXCLUDED.has(key);
   const json = value => { try { return JSON.parse(value); } catch { return null; } };
   const snapshot = () => {
@@ -46,7 +65,9 @@
     });
     return merged;
   };
-  let applying = false, hydrated = false, pulling = false, pushing = false, timer = 0, version = 0, queued = false;
+  let applying = false, hydrated = false, pulling = false, pushing = false, syncing = false;
+  let timer = 0, version = 0, queued = false, localRevision = 0;
+  const status = (state, detail = {}) => window.dispatchEvent(new CustomEvent("zeiterfassung-sync-status", { detail: { state, version, ...detail } }));
   const apply = state => {
     applying = true;
     try {
@@ -58,81 +79,127 @@
     } finally { applying = false; }
     window.dispatchEvent(new CustomEvent("zeiterfassung-cloud-hydrated"));
   };
+  const schedulePush = (immediate = false) => {
+    queued = true;
+    clearTimeout(timer);
+    if (!hydrated || applying || !api()?.hasSession?.()) return;
+    timer = setTimeout(() => { timer = 0; push(); }, immediate ? 0 : PUSH_DELAY);
+  };
   const push = async () => {
     if (pushing || !hydrated || !api()?.hasSession?.()) return false;
     pushing = true;
+    const revisionAtStart = localRevision, payload = snapshot();
+    status("syncing");
     try {
-      const result = await api().saveState(snapshot(), version);
+      const result = await api().saveState(payload, version, device());
       version = Number(result.version || version);
-      queued = false;
+      if (localRevision === revisionAtStart) queued = false;
+      else schedulePush();
+      status("saved", { updatedAt: result.updated_at || null });
       return true;
     } catch (error) {
       if (error.status === 409 && error.data?.state) {
-        apply(error.data.state);
+        const latest = localRevision === revisionAtStart ? error.data.state : mergeLegacy(error.data.state, snapshot());
+        apply(latest);
         version = Number(error.data.version || version);
-        queued = false;
-      } else queued = true;
+        queued = localRevision !== revisionAtStart;
+        status("conflict-resolved", { updatedAt: error.data.updated_at || null });
+      } else {
+        queued = true;
+        status("retry", { message: error.message });
+      }
       return false;
     } finally {
       pushing = false;
       if (queued) schedulePush();
     }
   };
-  const schedulePush = () => {
-    if (!hydrated || applying || !api()?.hasSession?.()) return;
-    queued = true;
-    clearTimeout(timer);
-    timer = setTimeout(() => { timer = 0; push(); }, 650);
-  };
   const pull = async () => {
     if (pulling || !api()?.hasSession?.()) return false;
     pulling = true;
+    const revisionAtStart = localRevision, wasHydrated = hydrated;
+    status("syncing");
     try {
-      const remote = await api().getState(), local = snapshot();
+      const remote = await api().getState(), local = snapshot(), changedDuringRequest = localRevision !== revisionAtStart, previousVersion = version;
       if (remote.exists) {
-        apply(remote.state || {});
         version = Number(remote.version || 0);
+        const changedOnOtherDevice = wasHydrated && version > previousVersion && remote.updated_by_device && remote.updated_by_device !== device().id;
+        if (changedDuringRequest && wasHydrated) {
+          queued = true;
+        } else if (changedDuringRequest) {
+          apply(mergeLegacy(remote.state || {}, local));
+          queued = true;
+        } else {
+          apply(remote.state || {});
+          queued = false;
+        }
+        if (changedOnOtherDevice) notifyRemoteChange(remote.updated_by_label || "einem anderen Gerät", remote.updated_at);
       } else if (hasUserData(local)) {
         const initial = mergeLegacy(remote.state || {}, local);
         apply(initial);
-        const saved = await api().saveState(initial, 0);
+        const saved = await api().saveState(snapshot(), 0, device());
         version = Number(saved.version || 1);
+        queued = false;
       } else {
         apply(remote.state || {});
         version = 0;
+        queued = false;
       }
       hydrated = true;
-      queued = false;
+      if (queued) schedulePush();
+      status("ready", { updatedAt: remote.updated_at || null });
       return true;
     } catch (error) {
+      status("retry", { message: error.message });
       console.warn("Profildaten konnten nicht synchronisiert werden.", error);
       return false;
     } finally { pulling = false; }
   };
+  const notifyRemoteChange = (label, updatedAt) => {
+    const detail = { label, updatedAt: updatedAt || null };
+    window.dispatchEvent(new CustomEvent("zeiterfassung-remote-change", { detail }));
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      try {
+        const notification = new Notification("Profildaten aktualisiert", { body: `Daten wurden auf ${label} angepasst. Jetzt aktualisieren?`, tag: "zeiterfassung-remote-change" });
+        notification.onclick = () => { window.focus(); sync(); notification.close(); };
+      } catch { /* Browser blockiert lokale Benachrichtigungen. */ }
+    }
+  };
+  const requestNotifications = async () => {
+    if (typeof Notification === "undefined") return "unsupported";
+    try { return await Notification.requestPermission(); } catch { return "denied"; }
+  };
   const sync = async () => {
-    if (!api()?.hasSession?.()) return false;
-    if (!hydrated) return pull();
-    if (queued) await push();
-    return pull();
+    if (syncing || !api()?.hasSession?.()) return false;
+    syncing = true;
+    try {
+      if (!hydrated) return await pull();
+      if (queued) await push();
+      return await pull();
+    } finally { syncing = false; }
   };
   if (!Storage.prototype.__zeiterfassungCloudPatched) {
     const originalSetItem = Storage.prototype.setItem, originalRemoveItem = Storage.prototype.removeItem;
     Storage.prototype.setItem = function(key, value) {
       originalSetItem.call(this, key, value);
-      if (this === localStorage && syncable(key) && !applying) schedulePush();
+      if (this === localStorage && syncable(key) && !applying) { localRevision += 1; schedulePush(); }
       window.dispatchEvent(new CustomEvent("zeiterfassung-storage-changed", { detail: key }));
     };
     Storage.prototype.removeItem = function(key) {
       originalRemoveItem.call(this, key);
-      if (this === localStorage && syncable(key) && !applying) schedulePush();
+      if (this === localStorage && syncable(key) && !applying) { localRevision += 1; schedulePush(); }
       window.dispatchEvent(new CustomEvent("zeiterfassung-storage-changed", { detail: key }));
     };
     Storage.prototype.__zeiterfassungCloudPatched = true;
     Storage.prototype.__zeiterfassungPatched = true;
   }
-  window.addEventListener("zeiterfassung-auth-changed", () => { hydrated = false; version = 0; sync(); });
-  window.addEventListener("storage", event => { if (syncable(event.key)) schedulePush(); });
+  window.addEventListener("zeiterfassung-auth-changed", () => { clearTimeout(timer); hydrated = false; version = 0; queued = false; localRevision += 1; sync(); });
+  window.addEventListener("storage", event => { if (syncable(event.key)) sync(); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) sync(); });
+  window.addEventListener("focus", () => sync());
+  window.addEventListener("pageshow", () => sync());
+  window.addEventListener("online", () => sync());
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => sync()); else sync();
-  setInterval(() => { if (api()?.hasSession?.()) sync(); }, 30000);
-  window.ZeiterfassungCloudSync = { pull, push, sync };
+  setInterval(() => { if (api()?.hasSession?.() && !document.hidden) sync(); }, POLL_INTERVAL);
+  window.ZeiterfassungCloudSync = { pull, push, sync, requestNotifications, device: device() };
 })();
