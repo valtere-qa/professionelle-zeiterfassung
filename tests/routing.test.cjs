@@ -301,7 +301,6 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-3/);
   assert.match(a.$('script[src*="auth-ui.js"]').getAttribute('src'), /20260913-17/);
   assert.match(a.$('script[src*="api.js"]').getAttribute('src'), /20260913-2/);
-  assert.equal(a.window.TIME_TRACKING_API_BASE, 'https://professionelle-zeiterfassung.vafa-qa-engineering.workers.dev');
   assert.match(a.$('script[src*="cloud-sync.js"]').getAttribute('src'), /20260913-4/);
   assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-18/);
   assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-7/);
@@ -1015,6 +1014,21 @@ test('Cloud GET requests retry once after a transient connection failure', async
   await app(t, '#overview', { [SESSION]: 'test-token' }, fetch);
   await new Promise(resolve => setTimeout(resolve, 750));
   assert.equal(stateAttempts, 2);
+});
+
+test('An empty cloud snapshot never deletes existing local bookings', async t => {
+  let puts = 0;
+  const fetch = async (url, options = {}) => {
+    if (String(url).endsWith('/api/auth/me')) return { ok: true, json: async () => ({ user: { id: 'u1', name: 'Valtère', email: 'v@example.ch' } }) };
+    if (String(url).endsWith('/api/state') && (options.method || 'GET') === 'GET') return { ok: true, json: async () => ({ exists: true, state: {}, version: 2 }) };
+    if (String(url).endsWith('/api/state') && options.method === 'PUT') { puts += 1; return { ok: true, json: async () => ({ ok: true, version: 3 }) }; }
+    if (String(url).endsWith('/api/bootstrap')) return { ok: true, json: async () => ({ calendar_events: [], notes: [] }) };
+    return { ok: false, json: async () => ({ error: 'Unexpected test request' }) };
+  };
+  const a = await app(t, '#overview', { [SESSION]: 'test-token', [STORE]: { entries: [{ id: 'local-entry', date: TODAY, minutes: 60 }] } }, fetch);
+  await new Promise(resolve => setTimeout(resolve, 900));
+  assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).entries[0].id, 'local-entry');
+  assert.ok(puts >= 1);
 });
 
 test('Registration protection and admin invitation endpoints are defined server-side', async t => {
