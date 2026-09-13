@@ -1016,7 +1016,7 @@ test('Cloud GET requests retry once after a transient connection failure', async
   assert.equal(stateAttempts, 2);
 });
 
-test('An empty cloud snapshot never deletes existing local bookings', async t => {
+test('An empty cloud snapshot never deletes any existing profile data', async t => {
   let puts = 0;
   const fetch = async (url, options = {}) => {
     if (String(url).endsWith('/api/auth/me')) return { ok: true, json: async () => ({ user: { id: 'u1', name: 'Valtère', email: 'v@example.ch' } }) };
@@ -1025,9 +1025,18 @@ test('An empty cloud snapshot never deletes existing local bookings', async t =>
     if (String(url).endsWith('/api/bootstrap')) return { ok: true, json: async () => ({ calendar_events: [], notes: [] }) };
     return { ok: false, json: async () => ({ error: 'Unexpected test request' }) };
   };
-  const a = await app(t, '#overview', { [SESSION]: 'test-token', [STORE]: { entries: [{ id: 'local-entry', date: TODAY, minutes: 60 }] } }, fetch);
+  const a = await app(t, '#overview', {
+    [SESSION]: 'test-token',
+    [STORE]: { entries: [{ id: 'local-entry', date: TODAY, minutes: 60 }], categories: ['Testing'], projects: ['Intern'], favorites: [{ label: 'Favorit' }], absences: [{ type: 'Ferien', start: TODAY, end: TODAY }], closedDays: [TODAY], daily: '8h 00' },
+    ['professionelle-zeiterfassung.calendar.v1']: [{ id: 'local-event', title: 'Termin', date: TODAY }],
+    ['professionelle-zeiterfassung.notes.v1']: [{ id: 'local-note', title: 'Notiz', content: 'Inhalt' }]
+  }, fetch);
   await new Promise(resolve => setTimeout(resolve, 900));
-  assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).entries[0].id, 'local-entry');
+  const data = JSON.parse(a.window.localStorage.getItem(STORE));
+  assert.equal(data.entries[0].id, 'local-entry');
+  assert.equal(data.categories[0], 'Testing');
+  assert.equal(JSON.parse(a.window.localStorage.getItem('professionelle-zeiterfassung.calendar.v1'))[0].id, 'local-event');
+  assert.equal(JSON.parse(a.window.localStorage.getItem('professionelle-zeiterfassung.notes.v1'))[0].id, 'local-note');
   assert.ok(puts >= 1);
 });
 
