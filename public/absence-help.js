@@ -31,6 +31,15 @@
         : "<span class='stable-help-number'>14</span><h3>Mobiler Login-Bereich</h3><p>Das Profil bleibt oberhalb der mobilen Navigation sichtbar.</p><div class='stable-help-steps'>Tippe auf das Profil, um Einloggen, Registrierung, Datensicherung und – nach der Anmeldung – Ausloggen zu öffnen. Das Menü bleibt auch auf einem 360‑px‑Display vollständig erreichbar.</div>";
       grid.append(card);
     }
+    if (!grid.querySelector("[data-sync-help]")) {
+      const card = document.createElement("article");
+      card.className = "card stable-help-card";
+      card.dataset.syncHelp = "true";
+      card.innerHTML = french
+        ? "<span class='stable-help-number'>15</span><h3>Synchronisation et accès protégés</h3><p>Les données du profil sont synchronisées avec D1 et restent disponibles sur les appareils connectés.</p><div class='stable-help-steps'>À l’ouverture de l’application, la connexion est demandée. Après la connexion, les saisies, réglages, absences, calendrier, notes et rappels sont chargés puis synchronisés automatiquement. Après le premier profil, toute nouvelle inscription exige un code d’invitation à usage unique créé par un Owner, un Admin ou les RH. Le code est valable sept jours.</div>"
+        : "<span class='stable-help-number'>15</span><h3>Synchronisation und geschützte Zugänge</h3><p>Die Profildaten werden mit D1 synchronisiert und stehen auf den angemeldeten Geräten zur Verfügung.</p><div class='stable-help-steps'>Beim Öffnen der App wird die Anmeldung verlangt. Nach der Anmeldung werden Buchungen, Einstellungen, Abwesenheiten, Kalender, Notizen und Erinnerungen geladen und automatisch synchronisiert. Nach dem ersten Profil benötigt jede weitere Registrierung einen einmaligen Einladungscode von Owner, Admin oder HR. Der Code ist sieben Tage gültig.</div>";
+      grid.append(card);
+    }
   };
   const dynamic = document.querySelector("#dynamic");
   if (dynamic) new MutationObserver(addAbsenceHelp).observe(dynamic, { childList: true, subtree: true });

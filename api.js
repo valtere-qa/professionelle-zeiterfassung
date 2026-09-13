@@ -8,15 +8,19 @@ async function apiRequest(path, options = {}) {
   if (token) headers.authorization = `Bearer ${token}`;
   const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "Die Anfrage konnte nicht ausgeführt werden.");
+  if (!response.ok) { const error = new Error(data.error || "Die Anfrage konnte nicht ausgeführt werden."); error.status = response.status; error.data = data; throw error; }
   return data;
 }
 
 window.ZeiterfassungAPI = {
-  async register(name, email, password) { const data = await apiRequest("/api/auth/register", { method: "POST", body: JSON.stringify({ name, email, password }) }); localStorage.setItem(SESSION_KEY, data.token); return data; },
+  async register(name, email, password, inviteCode = "") { const data = await apiRequest("/api/auth/register", { method: "POST", body: JSON.stringify({ name, email, password, invite_code: inviteCode }) }); localStorage.setItem(SESSION_KEY, data.token); return data; },
   async login(email, password) { const data = await apiRequest("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }); localStorage.setItem(SESSION_KEY, data.token); return data; },
   async logout() { await apiRequest("/api/auth/logout", { method: "POST" }).catch(() => {}); localStorage.removeItem(SESSION_KEY); },
   me() { return apiRequest("/api/auth/me"); },
+  getState() { return apiRequest("/api/state"); },
+  saveState(state, version = 0) { return apiRequest("/api/state", { method: "PUT", body: JSON.stringify({ state, version }) }); },
+  createInvite(email = "") { return apiRequest("/api/auth/invites", { method: "POST", body: JSON.stringify({ email }) }); },
+  users() { return apiRequest("/api/auth/users"); },
   bootstrap() { return apiRequest("/api/bootstrap"); },
   list(resource) { return apiRequest(`/api/${resource}`); },
   create(resource, payload) { return apiRequest(`/api/${resource}`, { method: "POST", body: JSON.stringify(payload) }); },

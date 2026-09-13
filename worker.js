@@ -34,12 +34,16 @@ async function ensureSchema(env) {
     CREATE TABLE IF NOT EXISTS settings (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, key TEXT NOT NULL, value TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(user_id,key));
     CREATE TABLE IF NOT EXISTS calendar_events (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, event_type TEXT NOT NULL DEFAULT 'Termin', title TEXT NOT NULL, event_date TEXT NOT NULL, all_day INTEGER NOT NULL DEFAULT 0, start_time TEXT, end_time TEXT, place TEXT, reminder_minutes INTEGER NOT NULL DEFAULT 0, note TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS notes (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, title TEXT NOT NULL, content TEXT NOT NULL, checklist_json TEXT NOT NULL DEFAULT '[]', color TEXT NOT NULL DEFAULT 'blau', section TEXT NOT NULL DEFAULT 'Arbeit', archived INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS user_states (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, payload_json TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS admin_invites (id TEXT PRIMARY KEY, created_by TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, organization_id TEXT, email TEXT, code_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, used_at TEXT, created_at TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS idx_calendar_user_date ON calendar_events(user_id,event_date);
     CREATE INDEX IF NOT EXISTS idx_notes_user_updated ON notes(user_id,updated_at);
     CREATE INDEX IF NOT EXISTS idx_entries_user_date ON entries(user_id,entry_date);
     CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token_hash);
+    CREATE INDEX IF NOT EXISTS idx_admin_invites_hash ON admin_invites(code_hash);
   `);
   try { await env.DB.exec("ALTER TABLE notes ADD COLUMN section TEXT NOT NULL DEFAULT 'Arbeit'"); } catch {}
+  try { await env.DB.exec("ALTER TABLE admin_invites ADD COLUMN organization_id TEXT"); } catch {}
   await env.DB.exec(`
     CREATE TABLE IF NOT EXISTS organizations (id TEXT PRIMARY KEY, name TEXT NOT NULL, code TEXT NOT NULL UNIQUE, timezone TEXT NOT NULL DEFAULT 'Europe/Zurich', locale TEXT NOT NULL DEFAULT 'de-CH', week_start INTEGER NOT NULL DEFAULT 1, owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS organization_members (id TEXT PRIMARY KEY, organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE, user_id TEXT REFERENCES users(id) ON DELETE SET NULL, display_name TEXT NOT NULL, email TEXT, employee_number TEXT, role TEXT NOT NULL DEFAULT 'employee', status TEXT NOT NULL DEFAULT 'active', department_id TEXT, manager_member_id TEXT, location TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(organization_id, email), UNIQUE(organization_id, employee_number));
@@ -76,6 +80,12 @@ function publicUser(user) {
   return { id: user.id, email: user.email, name: user.name, daily_target_minutes: user.daily_target_minutes, weekly_target_minutes: user.weekly_target_minutes };
 }
 
+async function authUser(env, user) {
+  if (!user) return null;
+  const context = await enterpriseContext(env, user);
+  return { ...publicUser(user), role: context.member.role, is_admin: enterpriseAdminRoles.has(context.member.role) };
+}
+
 async function auth(request, env) {
   const url = new URL(request.url), data = await body(request);
   if (url.pathname === "/api/auth/register" && request.method === "POST") {
@@ -83,21 +93,54 @@ async function auth(request, env) {
     if (String(data.password).length < 8) return json({ error: "Das Passwort muss mindestens 8 Zeichen enthalten." }, 400);
     const email = String(data.email).toLowerCase();
     if (await env.DB.prepare("SELECT id FROM users WHERE email=?").bind(email).first()) return json({ error: "Diese E-Mail-Adresse ist bereits registriert." }, 409);
-    const userId = id(), rawToken = token(), timestamp = now();
-    await env.DB.batch([
+    const userCount = Number((await env.DB.prepare("SELECT COUNT(*) AS count FROM users").first())?.count || 0);
+    const inviteCode = String(data.invite_code || "").trim();
+    let invite = null;
+    if (userCount > 0) {
+      if (!inviteCode) return json({ error: "Die Registrierung ist geschützt. Bitte verwende einen Einladungscode deines Administrators." }, 403);
+      invite = await env.DB.prepare("SELECT * FROM admin_invites WHERE code_hash=? AND used_at IS NULL AND expires_at>? ").bind(await hash(inviteCode), now()).first();
+      if (!invite) return json({ error: "Der Einladungscode ist ungültig, abgelaufen oder wurde bereits verwendet." }, 403);
+      if (invite.email && invite.email.toLowerCase() !== email) return json({ error: "Der Einladungscode ist für eine andere E-Mail-Adresse bestimmt." }, 403);
+    }
+    const userId = id(), rawToken = token(), timestamp = now(), userStatements = [
       env.DB.prepare("INSERT INTO users (id,email,password_hash,name,created_at) VALUES (?,?,?,?,?)").bind(userId, email, await hash(data.password), data.name, timestamp),
       env.DB.prepare("INSERT INTO sessions (id,user_id,token_hash,expires_at,created_at) VALUES (?,?,?,?,?)").bind(id(), userId, await hash(rawToken), new Date(Date.now() + 30 * 864e5).toISOString(), timestamp)
-    ]);
-    return json({ user: publicUser(await env.DB.prepare("SELECT * FROM users WHERE id=?").bind(userId).first()), token: rawToken }, 201);
+    ];
+    if (invite) {
+      userStatements.push(env.DB.prepare("UPDATE admin_invites SET used_at=? WHERE id=? AND used_at IS NULL").bind(timestamp, invite.id));
+      if (invite.organization_id) userStatements.push(env.DB.prepare("INSERT INTO organization_members (id,organization_id,user_id,display_name,email,role,status,location,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(id(), invite.organization_id, userId, data.name, email, "employee", "active", "Schweiz", timestamp, timestamp));
+    }
+    await env.DB.batch(userStatements);
+    const created = await env.DB.prepare("SELECT * FROM users WHERE id=?").bind(userId).first();
+    return json({ user: await authUser(env, created), token: rawToken }, 201);
   }
   if (url.pathname === "/api/auth/login" && request.method === "POST") {
     const user = await env.DB.prepare("SELECT * FROM users WHERE email=?").bind(String(data.email || "").toLowerCase()).first();
     if (!user || user.password_hash !== await hash(data.password || "")) return json({ error: "E-Mail oder Passwort ist falsch." }, 401);
     const rawToken = token();
     await env.DB.prepare("INSERT INTO sessions (id,user_id,token_hash,expires_at,created_at) VALUES (?,?,?,?,?)").bind(id(), user.id, await hash(rawToken), new Date(Date.now() + 30 * 864e5).toISOString(), now()).run();
-    return json({ user: publicUser(user), token: rawToken });
+    return json({ user: await authUser(env, user), token: rawToken });
   }
-  if (url.pathname === "/api/auth/me" && request.method === "GET") return json({ user: publicUser(await currentUser(request, env)) });
+  if (url.pathname === "/api/auth/me" && request.method === "GET") return json({ user: await authUser(env, await currentUser(request, env)) });
+  if (url.pathname === "/api/auth/invites" && request.method === "POST") {
+    const user = await currentUser(request, env);
+    if (!user) return json({ error: "Anmeldung erforderlich." }, 401);
+    const context = await enterpriseContext(env, user);
+    if (!enterpriseAdminRoles.has(context.member.role)) return json({ error: "Nur Owner, Admin oder HR dürfen Benutzer einladen." }, 403);
+    const email = String(data.email || "").trim().toLowerCase() || null;
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "Bitte eine gültige E-Mail-Adresse eingeben." }, 400);
+    const code = `ZTF-${token().slice(0, 8).toUpperCase()}`, timestamp = now(), expires = new Date(Date.now() + 7 * 864e5).toISOString();
+    await env.DB.prepare("INSERT INTO admin_invites (id,created_by,organization_id,email,code_hash,expires_at,created_at) VALUES (?,?,?,?,?,?,?)").bind(id(), user.id, context.organizationId, email, await hash(code), expires, timestamp).run();
+    return json({ invite_code: code, email, expires_at: expires });
+  }
+  if (url.pathname === "/api/auth/users" && request.method === "GET") {
+    const user = await currentUser(request, env);
+    if (!user) return json({ error: "Anmeldung erforderlich." }, 401);
+    const context = await enterpriseContext(env, user);
+    if (!enterpriseAdminRoles.has(context.member.role)) return json({ error: "Nur Owner, Admin oder HR dürfen Benutzer verwalten." }, 403);
+    const users = await env.DB.prepare("SELECT id,email,name,created_at FROM users ORDER BY name,email").all();
+    return json(users.results);
+  }
   if (url.pathname === "/api/auth/logout" && request.method === "POST") {
     const header = request.headers.get("Authorization") || "";
     if (header.startsWith("Bearer ")) await env.DB.prepare("DELETE FROM sessions WHERE token_hash=?").bind(await hash(header.slice(7))).run();
@@ -109,6 +152,34 @@ async function auth(request, env) {
 const enterpriseAdminRoles = new Set(["owner", "admin", "hr"]);
 const enterpriseApproverRoles = new Set(["owner", "admin", "hr", "manager"]);
 const enterpriseRoles = ["owner", "admin", "hr", "manager", "auditor", "employee"];
+const syncStatePrefix = "professionelle-zeiterfassung.";
+
+async function legacyState(env, user) {
+  const [entries, categories, projects, favorites, settings, calendarEvents, notes] = await Promise.all([
+    env.DB.prepare("SELECT * FROM entries WHERE user_id=? ORDER BY entry_date DESC, start_time DESC LIMIT 500").bind(user.id).all(),
+    env.DB.prepare("SELECT * FROM categories WHERE user_id=? ORDER BY name").bind(user.id).all(),
+    env.DB.prepare("SELECT * FROM projects WHERE user_id=? ORDER BY name").bind(user.id).all(),
+    env.DB.prepare("SELECT * FROM favorites WHERE user_id=? ORDER BY label").bind(user.id).all(),
+    env.DB.prepare("SELECT key,value FROM settings WHERE user_id=?").bind(user.id).all(),
+    env.DB.prepare("SELECT * FROM calendar_events WHERE user_id=? ORDER BY event_date,start_time").bind(user.id).all(),
+    env.DB.prepare("SELECT * FROM notes WHERE user_id=? ORDER BY updated_at DESC").bind(user.id).all()
+  ]);
+  const categoryNames = Object.fromEntries(categories.results.map(item => [item.id, item.name]));
+  const projectNames = Object.fromEntries(projects.results.map(item => [item.id, item.name]));
+  return {
+    [syncStatePrefix + "v2"]: JSON.stringify({
+      entries: entries.results.map(item => ({ id: item.id, date: item.entry_date, time: item.start_time || "", endTime: item.end_time || "", minutes: item.duration_minutes, breakMinutes: item.break_minutes, category: categoryNames[item.category_id] || "", project: projectNames[item.project_id] || "", description: item.description || "", jira_reference: item.jira_reference || "", notes: item.notes || "" })),
+      categories: categories.results.map(item => item.name),
+      projects: projects.results.map(item => item.name),
+      favorites: favorites.results.map(item => ({ label: item.label, category: categoryNames[item.category_id] || "", project: projectNames[item.project_id] || "", duration_minutes: item.duration_minutes || 0 })),
+      daily: settings.results.find(item => item.key === "daily")?.value || "8h 00",
+      weekly: settings.results.find(item => item.key === "weekly")?.value || "40h 00",
+      breakHours: settings.results.find(item => item.key === "breakHours")?.value || ".5"
+    }),
+    [syncStatePrefix + "calendar.v1"]: JSON.stringify(calendarEvents.results.map(item => ({ id: item.id, title: item.title, type: item.event_type, date: item.event_date, allDay: Boolean(item.all_day), start: item.start_time || "", end: item.end_time || "", place: item.place || "", reminder: Number(item.reminder_minutes || 0), note: item.note || "" }))),
+    [syncStatePrefix + "notes.v1"]: JSON.stringify(notes.results.map(item => ({ id: item.id, title: item.title, content: item.content, color: item.color, section: item.section || "Arbeit", tasks: JSON.parse(item.checklist_json || "[]"), created: item.created_at })))
+  };
+}
 
 async function enterpriseContext(env, user) {
   let member = await env.DB.prepare(`SELECT m.*, o.name AS organization_name, o.code AS organization_code, o.timezone, o.locale, o.week_start
@@ -217,6 +288,29 @@ async function appApi(request, env, user) {
   const url = new URL(request.url);
   if (url.pathname.startsWith("/api/enterprise/")) return enterpriseApi(request, env, user);
   const path = url.pathname, data = await body(request);
+  if (path === "/api/state" && request.method === "GET") {
+    const row = await env.DB.prepare("SELECT payload_json,version,updated_at FROM user_states WHERE user_id=?").bind(user.id).first();
+    if (row) {
+      try { return json({ state: JSON.parse(row.payload_json), version: Number(row.version || 1), updated_at: row.updated_at, exists: true }); }
+      catch { return json({ state: {}, version: Number(row.version || 1), updated_at: row.updated_at, exists: true }); }
+    }
+    return json({ state: await legacyState(env, user), version: 0, updated_at: null, exists: false });
+  }
+  if (path === "/api/state" && request.method === "PUT") {
+    if (!data.state || typeof data.state !== "object" || Array.isArray(data.state)) return json({ error: "Ungültiger Profilzustand." }, 400);
+    const state = Object.fromEntries(Object.entries(data.state).filter(([key, value]) => key.startsWith(syncStatePrefix) && key !== syncStatePrefix + "session" && key !== syncStatePrefix + "logged-out" && typeof value === "string" && value.length <= 600000));
+    const serialized = JSON.stringify(state);
+    if (serialized.length > 1900000) return json({ error: "Der synchronisierte Profilzustand ist zu gross." }, 413);
+    const current = await env.DB.prepare("SELECT version FROM user_states WHERE user_id=?").bind(user.id).first();
+    const expected = Number(data.version || 0), currentVersion = Number(current?.version || 0);
+    if (current && expected && expected !== currentVersion) {
+      const latest = await env.DB.prepare("SELECT payload_json,version,updated_at FROM user_states WHERE user_id=?").bind(user.id).first();
+      return json({ error: "Der Profilzustand wurde auf einem anderen Gerät geändert.", conflict: true, state: JSON.parse(latest.payload_json), version: Number(latest.version), updated_at: latest.updated_at }, 409);
+    }
+    const nextVersion = currentVersion + 1, timestamp = now();
+    await env.DB.prepare("INSERT INTO user_states (user_id,payload_json,version,updated_at) VALUES (?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET payload_json=excluded.payload_json,version=excluded.version,updated_at=excluded.updated_at").bind(user.id, serialized, nextVersion, timestamp).run();
+    return json({ ok: true, version: nextVersion, updated_at: timestamp });
+  }
   if (path === "/api/bootstrap" && request.method === "GET") {
     const [entries, categories, projects, favorites, settings, calendarEvents, notes] = await Promise.all([
       env.DB.prepare("SELECT * FROM entries WHERE user_id=? ORDER BY entry_date DESC, start_time DESC LIMIT 500").bind(user.id).all(),

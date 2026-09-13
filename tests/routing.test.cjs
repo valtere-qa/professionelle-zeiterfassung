@@ -19,7 +19,7 @@ const routes = {
 
 // Execute the actual delivered HTML and all its scripts. Network and scrolling
 // are recorded, never sent to a real account. jsdom does not perform layout.
-async function app(t, hash = '', seed = {}) {
+async function app(t, hash = '', seed = {}, fetchImpl = null) {
   const errors = [], requests = [], scrolls = [];
   const console = new VirtualConsole();
   console.on('jsdomError', error => errors.push(error.message));
@@ -32,10 +32,10 @@ async function app(t, hash = '', seed = {}) {
     window.close();
     assert.deepEqual(errors, [], 'No uncaught app errors during initialization or navigation');
   });
-  window.fetch = async (url, options = {}) => {
+  window.fetch = fetchImpl || (async (url, options = {}) => {
     requests.push({ url, method: options.method || 'GET' });
     return { ok: false, json: async () => ({ error: 'Not authenticated (test)' }) };
-  };
+  });
   window.scrollTo = options => scrolls.push({ type: 'window', ...options });
   window.HTMLElement.prototype.scrollIntoView = function(options) {
     scrolls.push({ type: 'element', id: this.id, ...options });
@@ -299,8 +299,10 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.ok(a.$('#entriesToday'));
   assert.ok(a.$('#overviewCalendarToday'));
   assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-3/);
-  assert.match(a.$('script[src*="auth-ui.js"]').getAttribute('src'), /20260908-14/);
-  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-12/);
+  assert.match(a.$('script[src*="auth-ui.js"]').getAttribute('src'), /20260913-15/);
+  assert.match(a.$('script[src*="api.js"]').getAttribute('src'), /20260913-1/);
+  assert.match(a.$('script[src*="cloud-sync.js"]').getAttribute('src'), /20260913-1/);
+  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-13/);
   assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-7/);
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
   assert.match(stable, /#overviewView>\.work\{|\.metrics\{gap:10px;margin:0 0 20px/);
@@ -405,7 +407,7 @@ test('Empty checklist task shows a red validation message and focuses the field'
 test('Help provides German and French documentation for the app functions', async t => {
   const a = await app(t, '#help');
   await tick();
-  assert.equal(a.window.document.querySelectorAll('.stable-help-card').length, 14);
+  assert.equal(a.window.document.querySelectorAll('.stable-help-card').length, 15);
   assert.match(a.$('#dynamic').textContent, /Timer/);
   assert.match(a.$('#dynamic').textContent, /Tagesabschluss/);
   assert.match(a.$('#dynamic').textContent, /Tagessaldo/);
@@ -423,6 +425,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /Timer-Buchungen/);
   assert.match(a.$('#dynamic').textContent, /Semikolon/);
   assert.match(a.$('#dynamic').textContent, /Mobiler Login-Bereich/);
+  assert.match(a.$('#dynamic').textContent, /Synchronisation und geschützte Zugänge/);
   a.$('[data-help-lang="fr"]').click();
   await tick();
   assert.match(a.$('#dynamic').textContent, /Saisies/);
@@ -436,6 +439,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /saisies du minuteur/);
   assert.match(a.$('#dynamic').textContent, /point-virgule/);
   assert.match(a.$('#dynamic').textContent, /Organisation & gouvernance/);
+  assert.match(a.$('#dynamic').textContent, /Synchronisation et accès protégés/);
 });
 
 test('Export dialog previews the professional report for each period', async t => {
@@ -941,6 +945,60 @@ test('Profile submenu shows only valid authentication actions when signed out', 
   assert.ok(a.$('.auth-overlay'));
   assert.ok(a.$('#authEmail'));
   assert.ok(a.$('#authPassword'));
+  assert.ok(a.$('#authInvite'));
+  assert.match(a.$('#authFields').textContent, /gültigen Code/);
+});
+
+test('A fresh app URL requires login before showing the profile data', async t => {
+  const a = await app(t, '#overview');
+  assert.ok(a.$('.auth-overlay'));
+  assert.equal(a.$('.shell').classList.contains('auth-locked'), true);
+  assert.equal(a.window.localStorage.getItem(SESSION), null);
+});
+
+test('Authenticated profile data is hydrated from D1 and local changes are uploaded', async t => {
+  const remoteState = { [STORE]: JSON.stringify({ entries: [{ id: 'remote-entry', date: TODAY, minutes: 90, category: 'Testing', project: 'Intern' }] }) };
+  const requests = [];
+  const fetch = async (url, options = {}) => {
+    requests.push({ url: String(url), method: options.method || 'GET', body: options.body ? JSON.parse(options.body) : null });
+    if (String(url).endsWith('/api/auth/me')) return { ok: true, json: async () => ({ user: { id: 'u1', name: 'Valtère', email: 'v@example.ch', is_admin: true, role: 'owner' } }) };
+    if (String(url).endsWith('/api/state') && (options.method || 'GET') === 'GET') return { ok: true, json: async () => ({ exists: true, state: remoteState, version: 3 }) };
+    if (String(url).endsWith('/api/state') && options.method === 'PUT') return { ok: true, json: async () => ({ ok: true, version: 4 }) };
+    if (String(url).endsWith('/api/bootstrap')) return { ok: true, json: async () => ({ calendar_events: [], notes: [] }) };
+    return { ok: false, json: async () => ({ error: 'Unexpected test request' }) };
+  };
+  const a = await app(t, '#overview', { [SESSION]: 'test-token', [STORE]: { entries: [{ id: 'local-entry', date: TODAY, minutes: 30 }] } }, fetch);
+  await tick();
+  assert.equal(JSON.parse(a.window.localStorage.getItem(STORE)).entries[0].id, 'remote-entry');
+  a.window.localStorage.setItem(STORE, JSON.stringify({ entries: [{ id: 'new-entry', date: TODAY, minutes: 120 }] }));
+  await new Promise(resolve => setTimeout(resolve, 750));
+  assert.ok(requests.some(request => request.url.endsWith('/api/state') && request.method === 'PUT' && request.body.state[STORE].includes('new-entry')));
+});
+
+test('Registration protection and admin invitation endpoints are defined server-side', async t => {
+  const worker = readFileSync(resolve(__dirname, '../worker.js'), 'utf8');
+  assert.match(worker, /CREATE TABLE IF NOT EXISTS user_states/);
+  assert.match(worker, /CREATE TABLE IF NOT EXISTS admin_invites/);
+  assert.match(worker, /Die Registrierung ist geschützt/);
+  assert.match(worker, /Nur Owner, Admin oder HR dürfen Benutzer einladen/);
+  assert.match(worker, /path === "\/api\/state"/);
+  assert.match(worker, /url\.pathname === "\/api\/auth\/invites"/);
+});
+
+test('Owner profile exposes the protected user invitation control', async t => {
+  const fetch = async (url, options = {}) => {
+    if (String(url).endsWith('/api/auth/me')) return { ok: true, json: async () => ({ user: { id: 'owner-1', name: 'Owner', email: 'owner@example.ch', role: 'owner', is_admin: true } }) };
+    if (String(url).endsWith('/api/state')) return { ok: true, json: async () => ({ exists: true, state: {}, version: 1 }) };
+    if (String(url).endsWith('/api/bootstrap')) return { ok: true, json: async () => ({ calendar_events: [], notes: [] }) };
+    return { ok: false, json: async () => ({ error: 'Unexpected test request' }) };
+  };
+  const a = await app(t, '#overview', { [SESSION]: 'owner-session' }, fetch);
+  await tick();
+  a.$('.profile').click();
+  await tick();
+  assert.equal(a.$('#authAdminInvite').hidden, false);
+  a.$('#authAdminInvite').click();
+  assert.match(a.$('.auth-overlay').textContent, /Neuen Benutzer einladen/);
 });
 
 test('Logout closes the profile menu and opens the login form immediately', async t => {
