@@ -302,7 +302,7 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.match(a.$('script[src*="auth-ui.js"]').getAttribute('src'), /20260913-16/);
   assert.match(a.$('script[src*="api.js"]').getAttribute('src'), /20260913-1/);
   assert.match(a.$('script[src*="cloud-sync.js"]').getAttribute('src'), /20260913-2/);
-  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-14/);
+  assert.match(a.$('script[src*="absence-help.js"]').getAttribute('src'), /20260913-15/);
   assert.match(a.$('link[href*="mobile-responsive.css"]').getAttribute('href'), /20260913-7/);
   const stable = readFileSync(resolve(publicDir, 'stable-ui.js'), 'utf8');
   assert.match(stable, /#overviewView>\.work\{|\.metrics\{gap:10px;margin:0 0 20px/);
@@ -426,6 +426,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /Semikolon/);
   assert.match(a.$('#dynamic').textContent, /Mobiler Login-Bereich/);
   assert.match(a.$('#dynamic').textContent, /Synchronisation und Benachrichtigungen/);
+  assert.match(a.$('#dynamic').textContent, /dieselbe App-URL/);
   a.$('[data-help-lang="fr"]').click();
   await tick();
   assert.match(a.$('#dynamic').textContent, /Saisies/);
@@ -440,6 +441,7 @@ test('Help provides German and French documentation for the app functions', asyn
   assert.match(a.$('#dynamic').textContent, /point-virgule/);
   assert.match(a.$('#dynamic').textContent, /Organisation & gouvernance/);
   assert.match(a.$('#dynamic').textContent, /Synchronisation et notifications/);
+  assert.match(a.$('#dynamic').textContent, /même URL/);
 });
 
 test('Export dialog previews the professional report for each period', async t => {

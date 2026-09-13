@@ -21,9 +21,13 @@ function hash(value) { return crypto.subtle.digest("SHA-256", new TextEncoder().
 function token() { return `${id()}${id().replaceAll("-", "")}`; }
 async function body(request) { try { return await request.json(); } catch { return {}; } }
 
+let schemaReady;
+
 async function ensureSchema(env) {
-  if (!env.DB) throw new Error("D1-Binding DB fehlt.");
-  await env.DB.exec(`
+  if (schemaReady) return schemaReady;
+  schemaReady = (async () => {
+    if (!env.DB) throw new Error("D1-Binding DB fehlt.");
+    await env.DB.exec(`
     PRAGMA foreign_keys = ON;
     CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, name TEXT NOT NULL, daily_target_minutes INTEGER NOT NULL DEFAULT 480, weekly_target_minutes INTEGER NOT NULL DEFAULT 2400, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, token_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, created_at TEXT NOT NULL);
@@ -41,12 +45,12 @@ async function ensureSchema(env) {
     CREATE INDEX IF NOT EXISTS idx_entries_user_date ON entries(user_id,entry_date);
     CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token_hash);
     CREATE INDEX IF NOT EXISTS idx_admin_invites_hash ON admin_invites(code_hash);
-  `);
-  try { await env.DB.exec("ALTER TABLE notes ADD COLUMN section TEXT NOT NULL DEFAULT 'Arbeit'"); } catch {}
-  try { await env.DB.exec("ALTER TABLE admin_invites ADD COLUMN organization_id TEXT"); } catch {}
-  try { await env.DB.exec("ALTER TABLE user_states ADD COLUMN updated_by_device TEXT"); } catch {}
-  try { await env.DB.exec("ALTER TABLE user_states ADD COLUMN updated_by_label TEXT"); } catch {}
-  await env.DB.exec(`
+    `);
+    try { await env.DB.exec("ALTER TABLE notes ADD COLUMN section TEXT NOT NULL DEFAULT 'Arbeit'"); } catch {}
+    try { await env.DB.exec("ALTER TABLE admin_invites ADD COLUMN organization_id TEXT"); } catch {}
+    try { await env.DB.exec("ALTER TABLE user_states ADD COLUMN updated_by_device TEXT"); } catch {}
+    try { await env.DB.exec("ALTER TABLE user_states ADD COLUMN updated_by_label TEXT"); } catch {}
+    await env.DB.exec(`
     CREATE TABLE IF NOT EXISTS organizations (id TEXT PRIMARY KEY, name TEXT NOT NULL, code TEXT NOT NULL UNIQUE, timezone TEXT NOT NULL DEFAULT 'Europe/Zurich', locale TEXT NOT NULL DEFAULT 'de-CH', week_start INTEGER NOT NULL DEFAULT 1, owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS organization_members (id TEXT PRIMARY KEY, organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE, user_id TEXT REFERENCES users(id) ON DELETE SET NULL, display_name TEXT NOT NULL, email TEXT, employee_number TEXT, role TEXT NOT NULL DEFAULT 'employee', status TEXT NOT NULL DEFAULT 'active', department_id TEXT, manager_member_id TEXT, location TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(organization_id, email), UNIQUE(organization_id, employee_number));
     CREATE TABLE IF NOT EXISTS departments (id TEXT PRIMARY KEY, organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE, name TEXT NOT NULL, cost_center TEXT, parent_id TEXT REFERENCES departments(id) ON DELETE SET NULL, manager_member_id TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(organization_id, name));
@@ -67,7 +71,10 @@ async function ensureSchema(env) {
     CREATE INDEX IF NOT EXISTS idx_payroll_exports_org_period ON payroll_exports(organization_id, period_key, created_at);
     CREATE INDEX IF NOT EXISTS idx_leave_balances_member_year ON leave_balances(member_id, year);
     CREATE INDEX IF NOT EXISTS idx_audit_org_created ON audit_events(organization_id, created_at);
-  `);
+    `);
+  })();
+  try { return await schemaReady; }
+  catch (error) { schemaReady = null; throw error; }
 }
 
 async function currentUser(request, env) {
