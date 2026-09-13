@@ -259,3 +259,22 @@
   #dynamic .stable-month-head .btn { width: 36px; min-width: 36px; padding: 6px; }
   #dynamic #calToday { min-width: 58px; padding-inline: 7px; font-size: 11px; }
 }
+
+/* Keep the complete dynamic page vertically reachable above the fixed mobile nav. */
+@media (max-width: 780px) {
+  html, body { min-height: 100%; height: auto; overflow-x: hidden; overflow-y: auto; }
+  body { scroll-padding-bottom: 132px; }
+  .shell, main { height: auto; min-height: 100dvh; }
+  main { overflow: visible; padding-bottom: calc(132px + env(safe-area-inset-bottom)); }
+  #dynamic { height: auto; max-height: none; min-height: 0; overflow: visible; padding-bottom: 24px; }
+  #dynamic .stats-columns,
+  #dynamic .enterprise-content,
+  #dynamic .enterprise-shell { min-width: 0; width: 100%; max-width: 100%; }
+  #dynamic .stats-week-chart,
+  #dynamic .stats-category { min-height: 0; }
+  #dynamic .stats-chart { width: 100%; max-width: 100%; overflow-x: auto; overflow-y: visible; }
+  #dynamic .enterprise-content,
+  #dynamic .enterprise-shell { overflow: visible; }
+  #dynamic .enterprise-tabs { touch-action: pan-x; overscroll-behavior-x: contain; }
+  #dynamic .enterprise-card { max-width: 100%; }
+}
