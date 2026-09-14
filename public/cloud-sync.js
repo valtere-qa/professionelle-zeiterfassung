@@ -44,6 +44,18 @@
     if (parsed === null) return raw;
     return JSON.stringify(normalizeArrays(parsed));
   };
+  // Device-local notification bookkeeping must never enter the cloud snapshot.
+  const NOTICE_KEY = "zeiterfassung-last-remote-notice.v1";
+  const canonical = value => {
+    if (Array.isArray(value)) return value.map(canonical);
+    if (value && typeof value === "object") return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]));
+    return value;
+  };
+  const stateContent = state => JSON.stringify(canonical(Object.fromEntries(
+    Object.entries(state || {}).filter(([key]) => syncable(key) && key !== SNAPSHOT_MARKER)
+      .map(([key, value]) => [key, typeof value === "string" ? json(value) ?? value : value])
+  )));
+  let lastRemoteContent = null;
   const snapshot = () => {
     const result = {};
     for (let index = 0; index < localStorage.length; index += 1) {
@@ -129,6 +141,7 @@
     try {
       const result = await api().saveState(payload, version, device());
       version = Number(result.version || version);
+      lastRemoteContent = stateContent(payload);
       if (localRevision === revisionAtStart) queued = false;
       else schedulePush();
       clearRetry();
@@ -162,12 +175,14 @@
       const remote = await api().getState(), local = snapshot(), changedDuringRequest = localRevision !== revisionAtStart, previousVersion = version;
       if (remote.exists) {
         version = Number(remote.version || 0);
-        const changedOnOtherDevice = wasHydrated && version > previousVersion && remote.updated_by_device && remote.updated_by_device !== device().id;
+        const remoteContent = stateContent(remote.state);
+        const changedOnOtherDevice = wasHydrated && version > previousVersion && remote.updated_by_device && remote.updated_by_device !== device().id && lastRemoteContent !== remoteContent;
+        lastRemoteContent = remoteContent;
         const localHasData = hasUserData(local);
         if (localHasData) {
           const merged = mergeLegacy(remote.state || {}, local);
           apply(merged);
-          queued = JSON.stringify(merged) !== JSON.stringify(remote.state || {});
+          queued = stateContent(merged) !== stateContent(remote.state || {});
         } else if (changedDuringRequest && wasHydrated) {
           queued = true;
         } else if (changedDuringRequest) {
@@ -176,12 +191,12 @@
         } else if (!wasHydrated && hasUserData(local)) {
           const merged = mergeLegacy(remote.state || {}, local);
           apply(merged);
-          queued = JSON.stringify(merged) !== JSON.stringify(remote.state || {});
+          queued = stateContent(merged) !== stateContent(remote.state || {});
         } else {
           apply(remote.state || {});
           queued = false;
         }
-        if (changedOnOtherDevice) notifyRemoteChange(remote.updated_by_label || "einem anderen Gerät", remote.updated_at);
+        if (changedOnOtherDevice) await notifyRemoteChange(remote.updated_by_label || "einem anderen Gerät", remote.updated_at, remoteContent);
       } else if (hasUserData(local)) {
         const initial = mergeLegacy(remote.state || {}, local);
         apply(initial);
@@ -209,12 +224,25 @@
       return false;
     } finally { pulling = false; }
   };
-  const notifyRemoteChange = (label, updatedAt) => {
+  const notifyRemoteChange = async (label, updatedAt, content) => {
+    // Hash content so the local marker contains no profile data.
+    const bytes = new TextEncoder().encode(content);
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    const fingerprint = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+    const showOnce = () => {
+      if (localStorage.getItem(NOTICE_KEY) === fingerprint) return;
+      localStorage.setItem(NOTICE_KEY, fingerprint);
+      showRemoteNotice(label, updatedAt);
+    };
+    if (navigator.locks?.request) await navigator.locks.request(NOTICE_KEY, showOnce);
+    else showOnce();
+  };
+  const showRemoteNotice = (label, updatedAt) => {
     const detail = { label, updatedAt: updatedAt || null };
     window.dispatchEvent(new CustomEvent("zeiterfassung-remote-change", { detail }));
     if (typeof Notification !== "undefined" && Notification.permission === "granted") {
       try {
-        const notification = new Notification("Profildaten aktualisiert", { body: `Daten wurden auf ${label} angepasst. Jetzt aktualisieren?`, tag: "zeiterfassung-remote-change" });
+        const notification = new Notification("Profildaten aktualisiert", { body: `Daten wurden auf ${label} angepasst. Jetzt aktualisieren?`, tag: "zeiterfassung-remote-change", renotify: false });
         notification.onclick = () => { window.focus(); sync(); notification.close(); };
       } catch { /* Browser blockiert lokale Benachrichtigungen. */ }
     }
@@ -235,6 +263,7 @@
   if (!Storage.prototype.__zeiterfassungCloudPatched) {
     const originalSetItem = Storage.prototype.setItem, originalRemoveItem = Storage.prototype.removeItem;
     Storage.prototype.setItem = function(key, value) {
+      if (this.getItem(key) === String(value)) return;
       originalSetItem.call(this, key, value);
       if (this === localStorage && syncable(key) && !applying) { localRevision += 1; schedulePush(); }
       window.dispatchEvent(new CustomEvent("zeiterfassung-storage-changed", { detail: key }));
@@ -247,7 +276,7 @@
     Storage.prototype.__zeiterfassungCloudPatched = true;
     Storage.prototype.__zeiterfassungPatched = true;
   }
-  window.addEventListener("zeiterfassung-auth-changed", () => { clearTimeout(timer); hydrated = false; version = 0; queued = false; localRevision += 1; sync(); });
+  window.addEventListener("zeiterfassung-auth-changed", () => { clearTimeout(timer); hydrated = false; version = 0; queued = false; lastRemoteContent = null; localStorage.removeItem(NOTICE_KEY); localRevision += 1; sync(); });
   window.addEventListener("storage", event => { if (syncable(event.key)) sync(); });
   document.addEventListener("visibilitychange", () => { if (!document.hidden) sync(); });
   window.addEventListener("focus", () => sync());
