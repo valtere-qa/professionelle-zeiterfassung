@@ -464,7 +464,9 @@ async function appApi(request, env, user) {
     const row = await env.DB.prepare("SELECT payload_json,version,updated_at,updated_by_device,updated_by_label FROM user_states WHERE user_id=?").bind(user.id).first();
     if (row) {
       try {
-        const stored = JSON.parse(row.payload_json), fallback = await legacyState(env, user), merged = mergeStatePayload(fallback, stored);
+        const stored = JSON.parse(row.payload_json);
+        // A complete snapshot includes intentional deletions; never resurrect mirror rows.
+        const merged = stored[snapshotMarkerKey] === "1" ? stored : mergeStatePayload(await legacyState(env, user), stored);
         return json({ state: merged, version: Number(row.version || 1), updated_at: row.updated_at, updated_by_device: row.updated_by_device || null, updated_by_label: row.updated_by_label || null, exists: true });
       }
       catch { return json({ state: {}, version: Number(row.version || 1), updated_at: row.updated_at, updated_by_device: row.updated_by_device || null, updated_by_label: row.updated_by_label || null, exists: true }); }
