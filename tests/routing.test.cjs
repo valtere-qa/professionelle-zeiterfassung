@@ -298,7 +298,7 @@ test('Overview presents the compact professional dashboard with a decoded user n
   assert.equal(a.$('#pdf').textContent.includes('PDF'), true);
   assert.ok(a.$('#entriesToday'));
   assert.ok(a.$('#overviewCalendarToday'));
-  assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260913-3/);
+  assert.match(a.$('script[src*="stable-ui.js"]').getAttribute('src'), /20260914-1/);
   assert.match(a.$('script[src*="auth-ui.js"]').getAttribute('src'), /20260913-17/);
   assert.match(a.$('script[src*="api.js"]').getAttribute('src'), /20260913-2/);
   assert.match(a.$('script[src*="cloud-sync.js"]').getAttribute('src'), /20260913-4/);
@@ -1046,7 +1046,7 @@ test('Registration protection and admin invitation endpoints are defined server-
   assert.match(worker, /updated_by_device/);
   assert.match(worker, /updated_by_label/);
   assert.match(worker, /function mergeStatePayload/);
-  assert.match(worker, /const existingRow = await env\.DB\.prepare\("SELECT payload_json FROM user_states/);
+  assert.match(worker, /const existingRow = await env\.DB\.prepare\("SELECT payload_json(?:,version)? FROM user_states/);
   assert.match(worker, /CREATE TABLE IF NOT EXISTS admin_invites/);
   assert.match(worker, /Die Registrierung ist geschützt/);
   assert.match(worker, /Nur Owner, Admin oder HR dürfen Benutzer einladen/);

@@ -169,6 +169,10 @@
         apply(remote.state || {});
         version = 0;
         queued = false;
+        if (hasUserData(remote.state || {})) {
+          const canonical = await api().saveState(snapshot(), 0, device());
+          version = Number(canonical.version || 1);
+        }
       }
       hydrated = true;
       if (queued) schedulePush();

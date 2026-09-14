@@ -23,11 +23,13 @@
   const read = (key, fallback) => JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
   const save = (key, value) => localStorage.setItem(key, JSON.stringify(value));
   const api=()=>window.ZeiterfassungAPI;
-  const pullRemote=async()=>{if(!api()?.hasSession?.())return;try{const remote=await api().bootstrap();if(remote.calendar_events?.length){save(CALENDAR,remote.calendar_events.map(x=>({id:x.id,title:x.title,type:x.event_type,date:x.event_date,allDay:Boolean(x.all_day),start:x.start_time||"",end:x.end_time||"",place:x.place||"",reminder:Number(x.reminder_minutes||0),note:x.note||""})));}if(remote.notes?.length){save(NOTES,remote.notes.map(x=>({id:x.id,title:x.title,content:x.content,color:x.color,section:x.section||"Arbeit",tasks:JSON.parse(x.checklist_json||"[]"),created:x.created_at})));}}catch(error){console.warn("Remote-Daten konnten nicht geladen werden.",error);}};
+  const canonicalSync=()=>window.ZeiterfassungCloudSync;
+  const pullRemote=async()=>{if(!api()?.hasSession?.())return;try{if(canonicalSync()?.sync){await canonicalSync().sync();return;}const remote=await api().bootstrap();if(remote.calendar_events?.length){save(CALENDAR,remote.calendar_events.map(x=>({id:x.id,title:x.title,type:x.event_type,date:x.event_date,allDay:Boolean(x.all_day),start:x.start_time||"",end:x.end_time||"",place:x.place||"",reminder:Number(x.reminder_minutes||0),note:x.note||""})));}if(remote.notes?.length){save(NOTES,remote.notes.map(x=>({id:x.id,title:x.title,content:x.content,color:x.color,section:x.section||"Arbeit",tasks:JSON.parse(x.checklist_json||"[]"),created:x.created_at})));}}catch(error){console.warn("Remote-Daten konnten nicht geladen werden.",error);}};
   const calendarPayload=item=>({event_type:item.type||"Termin",title:item.title,event_date:item.date,all_day:Boolean(item.allDay),start_time:item.start||null,end_time:item.end||null,place:item.place||null,reminder_minutes:Number(item.reminder||0),note:item.note||null});
-  const pushCalendar=async item=>{if(!api()?.hasSession?.())return;try{const remote=await api().create("calendar",calendarPayload(item));if(remote?.id){item.id=remote.id;save(CALENDAR,read(CALENDAR,[]));}}catch(error){console.warn("Kalender lokal gespeichert; D1-Synchronisierung ausstehend.",error);}};
-  const updateCalendar=async item=>{if(!api()?.hasSession?.()||!item?.id)return;try{const remote=await api().update("calendar",item.id,calendarPayload(item));if(remote?.id)save(CALENDAR,read(CALENDAR,[]));}catch(error){console.warn("Kalender lokal aktualisiert; D1-Synchronisierung ausstehend.",error);}};
-  const removeCalendar=async item=>{if(!api()?.hasSession?.()||!item?.id)return;try{await api().remove("calendar",item.id);}catch(error){console.warn("Kalender lokal gelöscht; D1-Löschung ausstehend.",error);}};
+  const pushCanonicalState=async()=>{if(!api()?.hasSession?.())return;if(canonicalSync()?.push)await canonicalSync().push();};
+  const pushCalendar=async()=>{await pushCanonicalState();};
+  const updateCalendar=async()=>{await pushCanonicalState();};
+  const removeCalendar=async()=>{await pushCanonicalState();};
   const dateKey = date => { const value=date instanceof Date?date:new Date(date); return value.getFullYear()+"-"+String(value.getMonth()+1).padStart(2,"0")+"-"+String(value.getDate()).padStart(2,"0"); };
   const today = () => dateKey(new Date());
   const namedLabel = value => {
@@ -373,8 +375,8 @@
     const colors={blau:{label:"Blau",className:"note-blue"},grün:{label:"Grün",className:"note-green"},gelb:{label:"Gelb",className:"note-yellow"},rot:{label:"Rot",className:"note-red"},violett:{label:"Violett",className:"note-purple"}};
     const normalizeTasks=n=>Array.isArray(n.tasks)?n.tasks.filter(t=>t&&String(t.text||"").trim()).map(t=>({text:String(t.text||"").trim(),done:Boolean(t.done)})):[];
     const colorInfo=n=>colors[n.color]||colors.blau;
-    const syncNote=note=>{if(!api()?.hasSession?.()||!note?.id)return;api().update("notes",note.id,{title:note.title,content:note.content,checklist_json:JSON.stringify(note.tasks||[]),color:note.color,section:note.section||"Arbeit"}).catch(error=>console.warn("Notiz lokal gespeichert; D1-Synchronisierung ausstehend.",error));};
-    const removeRemoteNote=note=>{if(!api()?.hasSession?.()||!note?.id)return;api().remove("notes",note.id).catch(error=>console.warn("Notiz lokal gelöscht; D1-Löschung ausstehend.",error));};
+    const syncNote=async()=>{await pushCanonicalState();};
+    const removeRemoteNote=async()=>{await pushCanonicalState();};
     const persist=note=>{save(NOTES,notes);syncNote(note)};
     const visible=()=>notes.filter(n=>(filter==="all"||String(n.color||"blau")===filter)&&(selectedSection==="all"||String(n.section||"Arbeit")===selectedSection)&&[n.title,n.content,(n.tasks||[]).map(t=>t.text).join(" ")].join(" ").toLowerCase().includes(query));
     const draw=()=>{

@@ -229,6 +229,76 @@ const stateName = value => {
 };
 const uniqueNames = values => [...new Set((Array.isArray(values) ? values : []).map(stateName).filter(Boolean))];
 
+const defaultCategoryNames = new Set(["Testing", "Meeting", "Entwicklung", "Dokumentation", "Organisation", "Weiterbildung"]);
+const defaultProjectNames = new Set(["UKA Connect", "Intern", "Privat"]);
+const mainStateKey = syncStatePrefix + "v2";
+const detailStateKeys = ["calendar.v1", "notes.v1", "reminders.v1", "reminders"];
+const snapshotMarkerKey = syncStatePrefix + "sync-complete.v1";
+
+const stateArrayKey = value => {
+  if (value && typeof value === "object") return value.id || (value.name ? "name:" + value.name : value.label ? "label:" + value.label : JSON.stringify(value));
+  return String(value);
+};
+const mergeStateArray = (current, next) => {
+  const values = [...(Array.isArray(next) ? next : []), ...(Array.isArray(current) ? current : [])], seen = new Set();
+  return values.filter(value => {
+    const key = stateArrayKey(value);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+const mainHasMeaningfulData = main => {
+  if (!main || typeof main !== "object") return false;
+  if (["entries", "favorites", "absences", "closedDays"].some(key => Array.isArray(main[key]) && main[key].length > 0)) return true;
+  if (uniqueNames(main.categories).some(name => !defaultCategoryNames.has(name))) return true;
+  if (uniqueNames(main.projects).some(name => !defaultProjectNames.has(name))) return true;
+  return Boolean((main.weekdayTargets && typeof main.weekdayTargets === "object" && Object.keys(main.weekdayTargets).length) || main.daily || main.weekly || main.breakHours);
+};
+
+const stateHasMeaningfulData = state => {
+  if (!state || typeof state !== "object") return false;
+  if (mainHasMeaningfulData(stateJson(state, mainStateKey, null))) return true;
+  return detailStateKeys.some(key => {
+    const value = stateJson(state, syncStatePrefix + key, null);
+    return Array.isArray(value) ? value.length > 0 : Boolean(value && typeof value === "object" && Object.keys(value).length);
+  });
+};
+
+// The central profile snapshot is authoritative, but an empty/partial device
+// payload must never destroy a previously persisted profile. This protects the
+// data when a browser cache is cleared while the first cloud pull is still in
+// flight or when an older client sends only one local-storage key.
+function mergeStatePayload(existing, incoming, options = {}) {
+  const current = existing && typeof existing === "object" && !Array.isArray(existing) ? existing : {};
+  const next = incoming && typeof incoming === "object" && !Array.isArray(incoming) ? incoming : {};
+  const protectEmpty = options.protectEmpty !== false;
+  if (!Object.keys(next).length) return current;
+  if (protectEmpty && !stateHasMeaningfulData(next) && stateHasMeaningfulData(current)) return current;
+
+  const isCompleteSnapshot = next[snapshotMarkerKey] === "1";
+  const merged = isCompleteSnapshot && !protectEmpty ? { ...next } : { ...current, ...next };
+  const currentMain = stateJson(current, mainStateKey, null), nextMain = stateJson(next, mainStateKey, null);
+  if (nextMain && typeof nextMain === "object") {
+    const main = { ...(currentMain && typeof currentMain === "object" ? currentMain : {}), ...nextMain };
+    ["entries", "favorites", "absences", "closedDays"].forEach(key => {
+      if (protectEmpty && Array.isArray(nextMain[key]) && Array.isArray(currentMain?.[key])) main[key] = mergeStateArray(currentMain[key], nextMain[key]);
+    });
+    if (protectEmpty && Array.isArray(nextMain.categories) && Array.isArray(currentMain?.categories)) main.categories = mergeStateArray(currentMain.categories, nextMain.categories);
+    if (protectEmpty && Array.isArray(nextMain.projects) && Array.isArray(currentMain?.projects)) main.projects = mergeStateArray(currentMain.projects, nextMain.projects);
+    if (nextMain.weekdayTargets && typeof nextMain.weekdayTargets === "object" && currentMain?.weekdayTargets && typeof currentMain.weekdayTargets === "object") {
+      main.weekdayTargets = { ...currentMain.weekdayTargets, ...nextMain.weekdayTargets };
+    }
+    merged[mainStateKey] = JSON.stringify(main);
+  }
+  detailStateKeys.forEach(key => {
+    const fullKey = syncStatePrefix + key, currentValue = stateJson(current, fullKey, null), nextValue = stateJson(next, fullKey, null);
+    if (protectEmpty && Array.isArray(nextValue) && Array.isArray(currentValue)) merged[fullKey] = JSON.stringify(mergeStateArray(currentValue, nextValue));
+  });
+  return merged;
+}
+
 function structuredStateStatements(env, user, state, timestamp) {
   const main = stateJson(state, syncStatePrefix + "v2", {});
   const calendar = stateJson(state, syncStatePrefix + "calendar.v1", []);
@@ -387,9 +457,7 @@ async function appApi(request, env, user) {
     const row = await env.DB.prepare("SELECT payload_json,version,updated_at,updated_by_device,updated_by_label FROM user_states WHERE user_id=?").bind(user.id).first();
     if (row) {
       try {
-        const stored = JSON.parse(row.payload_json), fallback = await legacyState(env, user), storedMain = stateJson(stored, syncStatePrefix + "v2", null), fallbackMain = stateJson(fallback, syncStatePrefix + "v2", {});
-        const merged = { ...fallback, ...stored };
-        if (storedMain && fallbackMain && typeof storedMain === "object" && typeof fallbackMain === "object") merged[syncStatePrefix + "v2"] = JSON.stringify({ ...fallbackMain, ...storedMain });
+        const stored = JSON.parse(row.payload_json), fallback = await legacyState(env, user), merged = mergeStatePayload(fallback, stored);
         return json({ state: merged, version: Number(row.version || 1), updated_at: row.updated_at, updated_by_device: row.updated_by_device || null, updated_by_label: row.updated_by_label || null, exists: true });
       }
       catch { return json({ state: {}, version: Number(row.version || 1), updated_at: row.updated_at, updated_by_device: row.updated_by_device || null, updated_by_label: row.updated_by_label || null, exists: true }); }
@@ -398,15 +466,21 @@ async function appApi(request, env, user) {
   }
   if (path === "/api/state" && request.method === "PUT") {
     if (!data.state || typeof data.state !== "object" || Array.isArray(data.state)) return json({ error: "Ungültiger Profilzustand." }, 400);
-    const state = Object.fromEntries(Object.entries(data.state).filter(([key, value]) => key.startsWith(syncStatePrefix) && key !== syncStatePrefix + "session" && key !== syncStatePrefix + "logged-out" && typeof value === "string" && value.length <= 600000));
-    const serialized = JSON.stringify(state);
-    if (serialized.length > 1900000) return json({ error: "Der synchronisierte Profilzustand ist zu gross." }, 413);
-    const current = await env.DB.prepare("SELECT version FROM user_states WHERE user_id=?").bind(user.id).first();
+    const incomingState = Object.fromEntries(Object.entries(data.state).filter(([key, value]) => key.startsWith(syncStatePrefix) && key !== syncStatePrefix + "session" && key !== syncStatePrefix + "logged-out" && typeof value === "string" && value.length <= 600000));
+    const existingRow = await env.DB.prepare("SELECT payload_json,version FROM user_states WHERE user_id=?").bind(user.id).first();
+    let existingState = {};
+    try { existingState = existingRow?.payload_json ? JSON.parse(existingRow.payload_json) : {}; } catch { existingState = {}; }
+    if (!existingRow) existingState = await legacyState(env, user);
+    const current = existingRow;
     const expected = Number(data.version || 0), currentVersion = Number(current?.version || 0);
     if (current && expected && expected !== currentVersion) {
       const latest = await env.DB.prepare("SELECT payload_json,version,updated_at FROM user_states WHERE user_id=?").bind(user.id).first();
       return json({ error: "Der Profilzustand wurde auf einem anderen Gerät geändert.", conflict: true, state: JSON.parse(latest.payload_json), version: Number(latest.version), updated_at: latest.updated_at }, 409);
     }
+    const protectStaleEmpty = Boolean((current && currentVersion > 0 && expected !== currentVersion) || (!current && stateHasMeaningfulData(existingState) && !stateHasMeaningfulData(incomingState)));
+    const state = mergeStatePayload(existingState, incomingState, { protectEmpty: protectStaleEmpty });
+    const serialized = JSON.stringify(state);
+    if (serialized.length > 1900000) return json({ error: "Der synchronisierte Profilzustand ist zu gross." }, 413);
     const nextVersion = currentVersion + 1, timestamp = now(), device = data.device && typeof data.device === "object" ? data.device : {};
     const deviceId = String(device.id || "").slice(0, 120) || null, deviceLabel = String(device.label || "").slice(0, 80) || null;
     await env.DB.prepare("INSERT INTO user_states (user_id,payload_json,version,updated_at,updated_by_device,updated_by_label) VALUES (?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET payload_json=excluded.payload_json,version=excluded.version,updated_at=excluded.updated_at,updated_by_device=excluded.updated_by_device,updated_by_label=excluded.updated_by_label").bind(user.id, serialized, nextVersion, timestamp, deviceId, deviceLabel).run();
