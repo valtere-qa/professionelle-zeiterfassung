@@ -394,7 +394,15 @@
     $("#newStableCal",p).onclick=()=>openEditor(null);
     draw();
   };
+  const preserveNoteEditor = p => {
+    const editor=p.querySelector(".stable-notes-editor");
+    if(!editor)return false;
+    return editor.dataset.draftDirty==="1" || editor.contains(document.activeElement) ||
+      Boolean(p.querySelector("[data-note-composing='1']"));
+  };
   const renderNotes = p => {
+    // Guard the actual DOM replacement, including callers outside refreshNow.
+    if(preserveNoteEditor(p))return;
     const notes=read(NOTES,[]), filters=[{key:"all",label:"Alle Notizen"},{key:"blau",label:"Blau"},{key:"grün",label:"Grün"},{key:"gelb",label:"Gelb"},{key:"rot",label:"Rot"},{key:"violett",label:"Violett"}];
     const sectionChoices=[{key:"all",label:"Alle Bereiche"},{key:"Arbeit",label:"Arbeit"},{key:"Privat",label:"Privat"},{key:"Organisation",label:"Organisation"}];
     let selectedId=notes[0]?.id||null, filter="all", selectedSection="all", query="";
@@ -422,7 +430,8 @@
       const editor=$(".stable-notes-editor",p);
       editor?.addEventListener("input",()=>{editor.dataset.draftDirty="1"});
       editor?.addEventListener("change",()=>{editor.dataset.draftDirty="1"});
-      editor?.addEventListener("focusout",()=>requestRefresh());
+      editor?.addEventListener("compositionstart",()=>{editor.dataset.noteComposing="1"});
+      editor?.addEventListener("compositionend",()=>{delete editor.dataset.noteComposing;editor.dataset.draftDirty="1"});
       const captureDraft=()=>{active.title=$("#activeNoteTitle",p).value.trim()||"Ohne Titel";active.content=$("#activeNoteContent",p).value;active.color=$("#activeNoteColor",p).value;active.section=$("#activeNoteSection",p).value;active.tasks=normalizeTasks(active)};
       const saveActive=()=>{if(!showValidation(p,["#activeNoteTitle"],"Der Notiztitel ist ein Pflichtfeld."))return;captureDraft();persist(active);draw();toast("Notiz gespeichert.")};
       $("#saveActiveNote",p).onclick=saveActive;$("#deleteActiveNote",p).onclick=()=>confirmDelete("Notiz löschen",escapeHtml(active.title||"Ohne Titel"),()=>{const current=read(NOTES,[]),deleted=current.find(n=>String(n.id)===String(active.id));if(deleted){const remaining=current.filter(n=>String(n.id)!==String(active.id));notes.splice(0,notes.length,...remaining);selectedId=notes[0]?.id||null;save(NOTES,remaining);removeRemoteNote(deleted);draw();toast("Notiz gelöscht.")}});
