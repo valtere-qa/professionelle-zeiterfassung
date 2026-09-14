@@ -1,4 +1,4 @@
-const API_BASE = window.TIME_TRACKING_API_BASE || "https://professionelle-zeiterfassung.vafa-qa-engineering.workers.dev";
+const API_BASE = window.TIME_TRACKING_API_BASE || window.location.origin;
 const SESSION_KEY = "professionelle-zeiterfassung.session";
 
 function sessionToken() { return localStorage.getItem(SESSION_KEY) || ""; }
