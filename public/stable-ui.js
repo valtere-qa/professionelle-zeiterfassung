@@ -244,7 +244,11 @@
   const panel = () => $("#dynamic");
   let currentView="overview", mountedView=null, refreshTimer=0, entryPage=1;const ENTRY_PAGE_SIZE=10;
   const dataSignature=()=>[localStorage.getItem(STORE)||"",localStorage.getItem(CALENDAR)||"",localStorage.getItem(NOTES)||""].join("|");
-  const refreshNow=()=>{if(currentView==="overview")refreshOverview();else if(currentView)render(currentView)};
+  const noteEditorBusy=()=>currentView==="notes" && Boolean(
+    document.querySelector(".stable-notes-editor[data-draft-dirty='1']") ||
+    document.activeElement?.closest?.("#dynamic input, #dynamic textarea, #dynamic select, #dynamic [contenteditable='true']")
+  );
+  const refreshNow=()=>{if(noteEditorBusy())return;if(currentView==="overview")refreshOverview();else if(currentView)render(currentView)};
   const requestRefresh=()=>{if(refreshTimer)return;refreshTimer=setTimeout(()=>{refreshTimer=0;refreshNow()},0)};
 
   const refreshOverview=()=>{
@@ -415,6 +419,10 @@
       $("#newStableNote",p)?.addEventListener("click",createNote);$("#emptyNewNote",p)?.addEventListener("click",createNote);
       if(!active)return;
       const colorSelect=$("#activeNoteColor",p);if(colorSelect){const picker=document.createElement("div");picker.className="stable-color-picker";picker.setAttribute("role","radiogroup");picker.setAttribute("aria-label","Farbe auswählen");Object.entries(colors).forEach(([key,item])=>{const button=document.createElement("button");button.type="button";button.className="stable-color-choice "+item.className+(colorSelect.value===key?" active":"");button.dataset.noteColor=key;button.setAttribute("role","radio");button.setAttribute("aria-label",item.label);button.setAttribute("aria-checked",String(colorSelect.value===key));button.onclick=()=>{colorSelect.value=key;picker.querySelectorAll(".stable-color-choice").forEach(b=>{const selected=b===button;b.classList.toggle("active",selected);b.setAttribute("aria-checked",String(selected))})};picker.append(button)});colorSelect.hidden=true;colorSelect.setAttribute("aria-hidden","true");colorSelect.before(picker)}
+      const editor=$(".stable-notes-editor",p);
+      editor?.addEventListener("input",()=>{editor.dataset.draftDirty="1"});
+      editor?.addEventListener("change",()=>{editor.dataset.draftDirty="1"});
+      editor?.addEventListener("focusout",()=>requestRefresh());
       const captureDraft=()=>{active.title=$("#activeNoteTitle",p).value.trim()||"Ohne Titel";active.content=$("#activeNoteContent",p).value;active.color=$("#activeNoteColor",p).value;active.section=$("#activeNoteSection",p).value;active.tasks=normalizeTasks(active)};
       const saveActive=()=>{if(!showValidation(p,["#activeNoteTitle"],"Der Notiztitel ist ein Pflichtfeld."))return;captureDraft();persist(active);draw();toast("Notiz gespeichert.")};
       $("#saveActiveNote",p).onclick=saveActive;$("#deleteActiveNote",p).onclick=()=>confirmDelete("Notiz löschen",escapeHtml(active.title||"Ohne Titel"),()=>{const current=read(NOTES,[]),deleted=current.find(n=>String(n.id)===String(active.id));if(deleted){const remaining=current.filter(n=>String(n.id)!==String(active.id));notes.splice(0,notes.length,...remaining);selectedId=notes[0]?.id||null;save(NOTES,remaining);removeRemoteNote(deleted);draw();toast("Notiz gelöscht.")}});
