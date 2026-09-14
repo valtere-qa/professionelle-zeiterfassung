@@ -115,7 +115,7 @@ h3{font-size:14px!important}
   </div>
   <section class="card" id="dynamic" role="region" tabindex="-1" hidden></section>
 </main></div>
-<script src="./api.js?v=20260913-2"></script>
+<script src="./api.js?v=20260914-1"></script>
 <script>
 (function(){
 const store="professionelle-zeiterfassung.v2", defaults={entries:[],categories:["Testing","Meeting","Entwicklung","Dokumentation","Organisation","Weiterbildung"],projects:["UKA Connect","Intern","Privat"],notes:"",daily:"8h 00",weekly:"40h 00",breakHours:".5"}, read=()=>Object.assign({},defaults,JSON.parse(localStorage.getItem(store)||"{}")), data=read(), save=()=>localStorage.setItem(store,JSON.stringify(data)), $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
