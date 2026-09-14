@@ -25,11 +25,34 @@
   const device = () => ({ id: deviceId(), label: deviceLabel() });
   const syncable = key => typeof key === "string" && key.startsWith(PREFIX) && !EXCLUDED.has(key);
   const json = value => { try { return JSON.parse(value); } catch { return null; } };
+  const newId = () => crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const withStableId = value => {
+    if (!value || typeof value !== "object" || Array.isArray(value) || value.id) return value;
+    return { ...value, id: newId() };
+  };
+  const normalizeArrays = value => {
+    if (Array.isArray(value)) return value.map(item => withStableId(normalizeArrays(item)));
+    if (value && typeof value === "object") {
+      const copy = { ...value };
+      Object.keys(copy).forEach(key => { if (copy[key] && typeof copy[key] === "object") copy[key] = normalizeArrays(copy[key]); });
+      return copy;
+    }
+    return value;
+  };
+  const normalizeSerialized = raw => {
+    const parsed = json(raw);
+    if (parsed === null) return raw;
+    return JSON.stringify(normalizeArrays(parsed));
+  };
   const snapshot = () => {
     const result = {};
     for (let index = 0; index < localStorage.length; index += 1) {
       const key = localStorage.key(index);
-      if (syncable(key)) result[key] = localStorage.getItem(key) || "";
+      if (!syncable(key)) continue;
+      const raw = localStorage.getItem(key) || "";
+      const normalized = normalizeSerialized(raw);
+      if (normalized !== raw) localStorage.setItem(key, normalized);
+      result[key] = normalized;
     }
     return result;
   };
@@ -42,7 +65,7 @@
     });
   };
   const mergeArray = (remote, local) => {
-    const values = [...(Array.isArray(remote) ? remote : []), ...(Array.isArray(local) ? local : [])];
+    const values = [...(Array.isArray(remote) ? remote : []), ...(Array.isArray(local) ? local : [])].map(withStableId);
     const seen = new Set();
     return values.filter(value => {
       const key = value && typeof value === "object" ? value.id || (value.name ? "name:" + value.name : value.label ? "label:" + value.label : JSON.stringify(value)) : String(value);
