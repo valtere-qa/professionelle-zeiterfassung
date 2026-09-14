@@ -102,6 +102,40 @@
     });
     return merged;
   };
+  // Rebase only local changes onto the last acknowledged server snapshot.
+  // Missing IDs in a locally edited list are intentional deletions.
+  const sameValue = (a, b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
+  const rebaseValue = (base, local, remote) => {
+    if (sameValue(base, local)) return remote;
+    if (Array.isArray(base) && Array.isArray(local) && Array.isArray(remote)) {
+      const key = value => value && typeof value === "object" ? value.id : typeof value + ":" + String(value);
+      if ([...base, ...local, ...remote].some(value => key(value) == null)) return local;
+      const b = new Map(base.map(value => [key(value), value]));
+      const l = new Map(local.map(value => [key(value), value]));
+      const result = new Map(remote.map(value => [key(value), value]));
+      for (const id of b.keys()) if (!l.has(id)) result.delete(id);
+      for (const [id, value] of l) {
+        if (!b.has(id) || !sameValue(b.get(id), value)) result.set(id, value);
+      }
+      return [...result.values()];
+    }
+    if (base && local && remote && !Array.isArray(base) && !Array.isArray(local) && !Array.isArray(remote) &&
+        typeof base === "object" && typeof local === "object" && typeof remote === "object") {
+      const result = { ...remote };
+      for (const key of new Set([...Object.keys(base), ...Object.keys(local)])) {
+        if (!(key in local)) delete result[key];
+        else if (!sameValue(base[key], local[key])) result[key] = rebaseValue(base[key], local[key], remote[key]);
+      }
+      return result;
+    }
+    return local;
+  };
+  const rebaseState = (base, local, remote) => {
+    const decode = state => Object.fromEntries(Object.entries(state || {}).map(([key, value]) => [key, json(value) ?? value]));
+    const result = rebaseValue(decode(base), decode(local), decode(remote));
+    return Object.fromEntries(Object.entries(result).map(([key, value]) => [key, typeof value === "string" ? value : JSON.stringify(value)]));
+  };
+  let acknowledgedState = null;
   let applying = false, hydrated = false, pulling = false, pushing = false, syncing = false;
   let timer = 0, retryTimer = 0, retryAttempt = 0, version = 0, queued = false, localRevision = 0;
   const status = (state, detail = {}) => window.dispatchEvent(new CustomEvent("zeiterfassung-sync-status", { detail: { state, version, ...detail } }));
@@ -134,7 +168,7 @@
     timer = setTimeout(() => { timer = 0; push(); }, immediate ? 0 : PUSH_DELAY);
   };
   const push = async () => {
-    if (pushing || !hydrated || !api()?.hasSession?.()) return false;
+    if (pushing || pulling || !hydrated || !api()?.hasSession?.()) return false;
     pushing = true;
     const revisionAtStart = localRevision, payload = { ...snapshot(), [SNAPSHOT_MARKER]: "1" };
     status("syncing");
@@ -142,6 +176,7 @@
       const result = await api().saveState(payload, version, device());
       version = Number(result.version || version);
       lastRemoteContent = stateContent(payload);
+      acknowledgedState = payload;
       if (localRevision === revisionAtStart) queued = false;
       else schedulePush();
       clearRetry();
@@ -149,7 +184,8 @@
       return true;
     } catch (error) {
       if (error.status === 409 && error.data?.state) {
-        const latest = mergeLegacy(error.data.state, snapshot());
+        const latest = acknowledgedState ? rebaseState(acknowledgedState, snapshot(), error.data.state) : mergeLegacy(error.data.state, snapshot());
+        acknowledgedState = error.data.state;
         apply(latest);
         version = Number(error.data.version || version);
         queued = JSON.stringify(latest) !== JSON.stringify(error.data.state);
@@ -167,7 +203,7 @@
     }
   };
   const pull = async () => {
-    if (pulling || !api()?.hasSession?.()) return false;
+    if (pulling || pushing || (hydrated && queued) || !api()?.hasSession?.()) return false;
     pulling = true;
     const revisionAtStart = localRevision, wasHydrated = hydrated;
     status("syncing");
@@ -178,24 +214,20 @@
         const remoteContent = stateContent(remote.state);
         const changedOnOtherDevice = wasHydrated && version > previousVersion && remote.updated_by_device && remote.updated_by_device !== device().id && lastRemoteContent !== remoteContent;
         lastRemoteContent = remoteContent;
-        const localHasData = hasUserData(local);
-        if (localHasData) {
-          const merged = mergeLegacy(remote.state || {}, local);
+        const remoteState = remote.state || {};
+        if (queued || changedDuringRequest) {
+          const merged = acknowledgedState ? rebaseState(acknowledgedState, local, remoteState) : mergeLegacy(remoteState, local);
           apply(merged);
-          queued = stateContent(merged) !== stateContent(remote.state || {});
-        } else if (changedDuringRequest && wasHydrated) {
-          queued = true;
-        } else if (changedDuringRequest) {
-          apply(mergeLegacy(remote.state || {}, local));
-          queued = true;
-        } else if (!wasHydrated && hasUserData(local)) {
-          const merged = mergeLegacy(remote.state || {}, local);
+          queued = stateContent(merged) !== stateContent(remoteState);
+        } else if (!wasHydrated && remoteState[SNAPSHOT_MARKER] !== "1" && hasUserData(local)) {
+          const merged = mergeLegacy(remoteState, local);
           apply(merged);
-          queued = stateContent(merged) !== stateContent(remote.state || {});
+          queued = stateContent(merged) !== stateContent(remoteState);
         } else {
-          apply(remote.state || {});
+          apply({ ...remoteState, [SNAPSHOT_MARKER]: "1" });
           queued = false;
         }
+        acknowledgedState = remoteState;
         if (changedOnOtherDevice) await notifyRemoteChange(remote.updated_by_label || "einem anderen Gerät", remote.updated_at, remoteContent);
       } else if (hasUserData(local)) {
         const initial = mergeLegacy(remote.state || {}, local);
@@ -222,7 +254,7 @@
       scheduleRetry();
       console.warn("Profildaten konnten nicht synchronisiert werden.", error);
       return false;
-    } finally { pulling = false; }
+    } finally { pulling = false; if (queued && hydrated) schedulePush(); }
   };
   const notifyRemoteChange = async (label, updatedAt, content) => {
     // Hash content so the local marker contains no profile data.
@@ -276,7 +308,7 @@
     Storage.prototype.__zeiterfassungCloudPatched = true;
     Storage.prototype.__zeiterfassungPatched = true;
   }
-  window.addEventListener("zeiterfassung-auth-changed", () => { clearTimeout(timer); hydrated = false; version = 0; queued = false; lastRemoteContent = null; localStorage.removeItem(NOTICE_KEY); localRevision += 1; sync(); });
+  window.addEventListener("zeiterfassung-auth-changed", () => { clearTimeout(timer); hydrated = false; version = 0; queued = false; acknowledgedState = null; lastRemoteContent = null; localStorage.removeItem(NOTICE_KEY); localRevision += 1; sync(); });
   window.addEventListener("storage", event => { if (syncable(event.key)) sync(); });
   document.addEventListener("visibilitychange", () => { if (!document.hidden) sync(); });
   window.addEventListener("focus", () => sync());
