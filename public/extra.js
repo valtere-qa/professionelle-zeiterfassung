@@ -55,7 +55,7 @@
     const value=duration.match(/(\d+)\s*h\s*(\d+)/i);
     const minutes=value?Number(value[1])*60+Number(value[2]):0;
     if(!minutes){fieldError("#duration","Dauer ist ein Pflichtfeld.");return}
-    d.entries.unshift({date:selectedDate(),category,project,description:document.querySelector("#description")?.value||"",notes:document.querySelector("#notes")?.value||"",minutes,time:new Date().toLocaleTimeString("de-CH",{hour:"2-digit",minute:"2-digit"})});
+    d.entries.unshift({id:crypto.randomUUID?.() || Date.now()+"-"+Math.random().toString(36).slice(2),date:selectedDate(),category,project,description:document.querySelector("#description")?.value||"",notes:document.querySelector("#notes")?.value||"",minutes,time:new Date().toLocaleTimeString("de-CH",{hour:"2-digit",minute:"2-digit"})});
     write(d);if(document.querySelector("#description"))document.querySelector("#description").value="";if(document.querySelector("#notes"))document.querySelector("#notes").value="";
     refresh();toast("Buchung gespeichert.");
   }
