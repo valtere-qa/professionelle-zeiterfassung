@@ -235,12 +235,16 @@ const mainStateKey = syncStatePrefix + "v2";
 const detailStateKeys = ["calendar.v1", "notes.v1", "reminders.v1", "reminders"];
 const snapshotMarkerKey = syncStatePrefix + "sync-complete.v1";
 
+const stateArrayItem = value => {
+  if (value && typeof value === "object" && !Array.isArray(value) && !value.id) return { ...value, id: id() };
+  return value;
+};
 const stateArrayKey = value => {
   if (value && typeof value === "object") return value.id || (value.name ? "name:" + value.name : value.label ? "label:" + value.label : JSON.stringify(value));
   return String(value);
 };
 const mergeStateArray = (current, next) => {
-  const values = [...(Array.isArray(next) ? next : []), ...(Array.isArray(current) ? current : [])], seen = new Set();
+  const values = [...(Array.isArray(next) ? next : []), ...(Array.isArray(current) ? current : [])].map(stateArrayItem), seen = new Set();
   return values.filter(value => {
     const key = stateArrayKey(value);
     if (seen.has(key)) return false;
