@@ -116,7 +116,10 @@ async function authUser(env, user) {
 }
 
 async function auth(request, env) {
-  const url = new URL(request.url), data = await body(request);
+  const url = new URL(request.url);
+  // Leave non-auth request bodies unread for appApi/enterpriseApi.
+  if (!url.pathname.startsWith("/api/auth/")) return null;
+  const data = await body(request);
   if (url.pathname === "/api/auth/register" && request.method === "POST") {
     if (!data.email || !data.password || !data.name) return json({ error: "Name, E-Mail und Passwort sind erforderlich." }, 400);
     if (String(data.password).length < 8) return json({ error: "Das Passwort muss mindestens 8 Zeichen enthalten." }, 400);
