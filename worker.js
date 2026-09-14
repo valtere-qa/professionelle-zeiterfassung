@@ -538,10 +538,15 @@ export default {
     if (request.method === "OPTIONS") return cors(request, new Response(null, { status: 204 }));
     let response;
     try {
+      const url = new URL(request.url);
+      // Statische App-Dateien müssen auch dann laden, wenn D1 kurzfristig
+      // nicht erreichbar ist. Nur API-Anfragen benötigen das Datenbankschema.
+      if (!url.pathname.startsWith("/api/") && env.ASSETS) {
+        return cors(request, await env.ASSETS.fetch(request));
+      }
       await ensureSchemaWithRetry(env);
       response = await auth(request, env);
       if (!response) {
-        const url = new URL(request.url);
         if (url.pathname.startsWith("/api/")) response = await appApi(request, env, await currentUser(request, env));
         else if (env.ASSETS) response = await env.ASSETS.fetch(request);
         else response = new Response("Professionelle Zeiterfassung", { headers: { "content-type": "text/plain; charset=utf-8" } });
